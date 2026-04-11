@@ -1,5 +1,6 @@
-import { Sequelize } from "sequelize";
+import { Sequelize } from "sequelize-typescript";
 import { config } from "./index";
+import path from "path";
 
 export const sequelize = new Sequelize(
     config.DB_NAME as string,
@@ -9,17 +10,25 @@ export const sequelize = new Sequelize(
         host: config.DB_HOST,
         port: Number(config.DB_PORT),
         dialect: config.DB_DIALECT as any,
+        pool: {
+            max: 5,
+            min: 0,
+            acquire: 30000,
+            idle: 10000,
+        },
+        logging: console.log,
+        models: [path.join(__dirname, "../models")],
     }
 );
 
 export const initDB = async () => {
     try {
         await sequelize.authenticate();
-        console.log("Database connection established successfully");
-        await sequelize.sync({ alter: true });
-        console.log("✅ DB synced");
+        console.log("✅ Database connection established successfully");
+        await sequelize.sync({ alter: false });
+        console.log("✅ Database synced successfully");
     } catch (error) {
-        console.error("❌ DB error:", error);
+        console.error("❌ Database error:", error);
         throw error;
     }
 };

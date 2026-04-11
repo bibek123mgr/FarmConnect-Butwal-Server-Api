@@ -1,29 +1,20 @@
-import express, { Request, Response } from "express";
-import { config } from "./config";
+import app from "./app";
 import { initDB } from "./config/database";
-
-const app = express();
+import { config } from "./config/index";
 
 const PORT = config.PORT || 5000;
-const NODE_ENV = config.NODE_ENV || "development";
 
-app.use(express.json());
+const server = app.listen(PORT);
 
-app.get("/", (req: Request, res: Response) => {
-    res.send(`🚀 Server is running in ${NODE_ENV} mode`);
+server.on("listening", async () => {
+    console.log(`✅ Server running on ${PORT}`);
+    await initDB();
 });
 
-const startServer = async () => {
-    try {
-        await initDB();
-
-        app.listen(PORT, () => {
-            console.log(`🚀 Server running on http://localhost:${PORT} [${NODE_ENV}]`);
-        });
-    } catch (error) {
-        console.error("❌ Failed to start server:", error);
-        process.exit(1);
+server.on("error", (err: any) => {
+    if (err.code === "EADDRINUSE") {
+        console.error(`❌ Port ${PORT} already in use`);
+    } else {
+        console.error("❌ Server error:", err);
     }
-};
-
-startServer();
+});

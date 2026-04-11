@@ -1,28 +1,55 @@
 {
   "name": "farmconnect-butwal-server",
   "version": "1.0.0",
-  "main": "index.js",
+  "main": "server.ts",
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1",
-    "dev": "ts-node-dev --respawn --transpile-only src/server.ts",
+    "kill-port": "fuser -k 3000/tcp 2>/dev/null || true",
+    "dev": "npm run kill-port && nodemon",
+    "dev:ts-node": "npm run kill-port && ts-node-dev --respawn --transpile-only src/server.ts",
     "build": "tsc",
-    "start": "node dist/server.js"
+    "start": "node dist/server.js",
+    "clean": "rm -rf dist",
+    "rebuild": "npm run clean && npm run build"
+  },
+  "nodemonConfig": {
+    "watch": [
+      "src"
+    ],
+    "ext": "ts,js,json",
+    "ignore": [
+      "src/**/*.spec.ts",
+      "node_modules",
+      "dist"
+    ],
+    "exec": "ts-node --transpile-only src/server.ts",
+    "env": {
+      "NODE_ENV": "development"
+    },
+    "delay": 1000
   },
   "keywords": [],
   "author": "",
   "license": "ISC",
   "description": "",
   "dependencies": {
+    "bcrypt": "^6.0.0",
     "dotenv": "^17.4.1",
     "express": "^5.2.1",
+    "joi": "^18.1.2",
+    "jsonwebtoken": "^9.0.3",
     "mysql2": "^3.22.0",
+    "rebuild": "^0.1.2",
     "sequelize": "^6.37.8"
   },
   "devDependencies": {
+    "@types/bcrypt": "^6.0.0",
     "@types/express": "^5.0.6",
+    "@types/jsonwebtoken": "^9.0.10",
     "@types/node": "^25.6.0",
     "@types/sequelize": "^4.28.20",
     "nodemon": "^3.1.14",
+    "sequelize-typescript": "^2.1.6",
     "ts-node": "^10.9.2",
     "ts-node-dev": "^2.0.0",
     "typescript": "^6.0.2"
