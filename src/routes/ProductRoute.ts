@@ -8,12 +8,12 @@ import { validate } from "../utils/validation.middleware";
 router
     .route("/products")
     .post(Auth, validate(ProductValidation.create), ProductController.create)
-    .put(Auth, validate(ProductValidation.update),
-        ProductController.update)
     .get(Auth, ProductController.getAll);
 
 router
     .route("/products/:id")
+    .put(Auth, validate(ProductValidation.update),
+        ProductController.update)
     .get(Auth, ProductController.getById)
     .delete(Auth, ProductController.delete);
 

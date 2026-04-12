@@ -35,8 +35,7 @@ class ProductValidation {
         rate: BaseValidation.getNumber("Product price is required"),
         unit: BaseValidation.getString("Product unit is required"),
         quantity: BaseValidation.getNumber("Product quantity is required"),
-        categoryId: BaseValidation.getNumber("Product category is required"),
-        farmId: BaseValidation.getNumber("Product farm is required"),
+        categoryId: BaseValidation.getNumber("Product category is required")
     })
 
     public static update = Joi.object({
@@ -45,7 +44,7 @@ class ProductValidation {
         rate: BaseValidation.getOptionalNumber(),
         unit: BaseValidation.getOptionalString(),
         quantity: BaseValidation.getOptionalNumber(),
-        isActive: BaseValidation.getBoolean(),
+        categoryId: BaseValidation.getNumber("Product category is required")
     })
 }
 

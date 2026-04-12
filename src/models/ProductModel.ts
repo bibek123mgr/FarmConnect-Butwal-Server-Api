@@ -10,6 +10,7 @@ import {
 } from "sequelize-typescript";
 import User from "./UserModel";
 import Farm from "./FarmModel";
+import Category from "./CategoryModel";
 
 @Table({
     tableName: "products",
@@ -42,6 +43,17 @@ export class Product extends Model {
 
     @BelongsTo(() => Farm)
     farm!: Farm;
+
+
+    @ForeignKey(() => Category)
+    @Column({
+        type: DataType.INTEGER,
+        allowNull: false,
+    })
+    declare categoryId: number;
+
+    @BelongsTo(() => Category)
+    category!: Category;
 
     @Column({
         type: DataType.STRING,

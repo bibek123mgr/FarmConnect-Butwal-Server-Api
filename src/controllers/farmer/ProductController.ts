@@ -8,7 +8,9 @@ class ProductController {
     static create = asyncHandler(async (req: AuthRequest, res: Response) => {
         const { name, description, unit, rate, quantity, categoryId } = req.body;
         const userId = req.user!.id;
-        const farmId=req.user!.farmId;
+        const farmId = req.user!.farmId;
+
+        console.log(req.user);
         await ProductService.createProduct({
             userId,
             name,
@@ -52,12 +54,11 @@ class ProductController {
     static update = asyncHandler(async (req: Request, res: Response) => {
         const id = Number(req.params.id);
 
-        const product = await ProductService.updateProduct(id, req.body);
+       await ProductService.updateProduct(id, req.body);
 
         return res.status(200).json({
             status: true,
-            message: "Product updated successfully",
-            data: product,
+            message: "Product updated successfully"
         });
     });
 
