@@ -1,58 +1,31 @@
 import Farm from "../../models/FarmModel";
-export interface IFarm {
-    id?: number;
-    userId: number;
-
-    farmName: string;
-
-    description?: string;
-    province?: string;
-    district?: string;
-    address?: string;
-
-    logo?: string;
-
-    panNo?: string;
-    vatNo?: string;
-
-    isActive?: boolean;
-    isVerified?: boolean;
-
-    createdAt?: Date;
-    updatedAt?: Date;
-}
+import { NotFoundError } from "../../utils/errors";
 
 export interface ICreateFarm {
     userId: number;
-
     farmName: string;
-
     description?: string;
     province?: string;
     district?: string;
     address?: string;
-
     logo?: string;
-
     panNo?: string;
     vatNo?: string;
 }
+
 export interface IUpdateFarm {
     farmName?: string;
-
     description?: string;
     province?: string;
     district?: string;
     address?: string;
-
     logo?: string;
-
     panNo?: string;
     vatNo?: string;
-
     isActive?: boolean;
     isVerified?: boolean;
 }
+
 class FarmService {
     static async createFarm(data: ICreateFarm) {
         return await Farm.create({
@@ -65,47 +38,50 @@ class FarmService {
             logo: data.logo,
             panNo: data.panNo,
             vatNo: data.vatNo,
+            isActive: true,
+            isVerified: false,
         });
     }
 
     static async getAllFarms() {
         return await Farm.findAll({
-            order: [["id", "DESC"]],
+            where: { isActive: true },
+            order: [["createdAt", "DESC"]],
         });
     }
 
     static async getFarmById(id: number) {
-        return await Farm.findByPk(id);
+        const farm = await Farm.findByPk(id);
+
+        if (!farm) {
+            throw new NotFoundError("Farm not found");
+        }
+
+        return farm;
     }
 
     static async getFarmsByUser(userId: number) {
         return await Farm.findAll({
-            where: { userId },
-            order: [["id", "DESC"]],
+            where: { userId, isActive: true },
+            order: [["createdAt", "DESC"]],
         });
     }
 
     static async updateFarm(id: number, data: IUpdateFarm) {
         const farm = await Farm.findByPk(id);
-
         if (!farm) {
-            return null;
+            throw new NotFoundError("Farm not found");
         }
-
         await farm.update(data);
-
         return farm;
     }
 
     static async deleteFarm(id: number) {
         const farm = await Farm.findByPk(id);
-
         if (!farm) {
-            return null;
+            throw new NotFoundError("Farm not found");
         }
-
-        await farm.destroy();
-
+        await farm.update({ isActive: false });
         return true;
     }
 }

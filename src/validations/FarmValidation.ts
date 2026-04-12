@@ -1,15 +1,14 @@
-import { NextFunction, Request, Response } from "express";
 import Joi from "joi";
 
 class BaseValidation {
     public static getString(requiredMsg: string = "Field is required") {
-        return Joi.string().required().messages({
+        return Joi.string().trim().required().messages({
             "string.empty": requiredMsg,
         });
     }
 
     public static getOptionalString() {
-        return Joi.string().allow(null, "").optional();
+        return Joi.string().trim().allow(null, "").optional();
     }
 
     public static getBoolean() {
@@ -17,56 +16,30 @@ class BaseValidation {
     }
 }
 
-const createFarmSchema = Joi.object({
-    farmName: BaseValidation.getString("Farm name is required"),
-    description: BaseValidation.getOptionalString(),
-    province: BaseValidation.getOptionalString(),
-    district: BaseValidation.getOptionalString(),
-    address: BaseValidation.getOptionalString(),
-    logo: BaseValidation.getOptionalString(),
-    panNo: BaseValidation.getOptionalString(),
-    vatNo: BaseValidation.getOptionalString(),
-});
-
-const updateFarmSchema = Joi.object({
-    farmName: Joi.string().optional(),
-    description: BaseValidation.getOptionalString(),
-    province: BaseValidation.getOptionalString(),
-    district: BaseValidation.getOptionalString(),
-    address: BaseValidation.getOptionalString(),
-    logo: BaseValidation.getOptionalString(),
-    panNo: BaseValidation.getOptionalString(),
-    vatNo: BaseValidation.getOptionalString(),
-    isActive: BaseValidation.getBoolean(),
-    isVerified: BaseValidation.getBoolean(),
-});
-
 class FarmValidation {
-    static create(req: Request, res: Response, next: NextFunction) {
-        const { error } = createFarmSchema.validate(req.body);
+    public static createFarmSchema = Joi.object({
+        farmName: BaseValidation.getString("Farm name is required").max(150),
+        description: BaseValidation.getOptionalString().max(500),
+        province: BaseValidation.getOptionalString().max(100),
+        district: BaseValidation.getOptionalString().max(100),
+        address: BaseValidation.getOptionalString().max(255),
+        logo: BaseValidation.getOptionalString(),
+        panNo: BaseValidation.getOptionalString().max(50),
+        vatNo: BaseValidation.getOptionalString().max(50),
+    });
 
-        if (error) {
-            return res.status(400).json({
-                status: false,
-                errors: error.details.map((e) => e.message),
-            });
-        }
-
-        return next();
-    }
-
-    static update(req: Request, res: Response, next: NextFunction) {
-        const { error } = updateFarmSchema.validate(req.body);
-
-        if (error) {
-            return res.status(400).json({
-                status: false,
-                errors: error.details.map((e) => e.message),
-            });
-        }
-
-        return next();
-    }
+    public static updateFarmSchema = Joi.object({
+        farmName: BaseValidation.getOptionalString().max(150),
+        description: BaseValidation.getOptionalString().max(500),
+        province: BaseValidation.getOptionalString().max(100),
+        district: BaseValidation.getOptionalString().max(100),
+        address: BaseValidation.getOptionalString().max(255),
+        logo: BaseValidation.getOptionalString(),
+        panNo: BaseValidation.getOptionalString().max(50),
+        vatNo: BaseValidation.getOptionalString().max(50),
+        isActive: BaseValidation.getBoolean(),
+        isVerified: BaseValidation.getBoolean(),
+    });
 }
 
 export default FarmValidation;

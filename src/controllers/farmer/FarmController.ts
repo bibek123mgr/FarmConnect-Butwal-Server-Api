@@ -1,187 +1,79 @@
-import { Response, NextFunction, Request } from "express";
+import { Response, Request } from "express";
 import { AuthRequest } from "../../middlewares/Auth";
 import FarmService from "../../services/farmer/FarmService";
+import { asyncHandler } from "../../utils/asyncHandler";
 
 class FarmController {
-    static async create(req: AuthRequest, res: Response, next: NextFunction) {
-        try {
-            const userId = req.user!.id;
+    static create = asyncHandler(async (req: AuthRequest, res: Response) => {
+        const userId = req.user!.id;
 
-            const {
-                farmName,
-                description,
-                province,
-                district,
-                address,
-                logo,
-                panNo,
-                vatNo
-            } = req.body;
+        const farm = await FarmService.createFarm({
+            userId,
+            ...req.body,
+        });
 
-            const data = {
-                userId,
-                farmName,
-                description,
-                province,
-                district,
-                address,
-                logo,
-                panNo,
-                vatNo
-            };
+        return res.status(201).json({
+            status: true,
+            message: "Farm created successfully",
+            data: farm,
+        });
+    });
 
-            const farm = await FarmService.createFarm(data);
+    static getAll = asyncHandler(async (_req: Request, res: Response) => {
+        const farms = await FarmService.getAllFarms();
 
-            return res.status(201).json({
-                message: "Farm created successfully",
-                farm,
-            });
-        } catch (error) {
-            res.status(500).json({
-                message: "Server error",
-                status: false
-            })
-            return next(error);
-        }
-    }
+        return res.status(200).json({
+            status: true,
+            message: "All farms fetched successfully",
+            data: farms,
+        });
+    });
 
-    static async getAll(_req: Request, res: Response, next: NextFunction) {
-        try {
-            const farms = await FarmService.getAllFarms();
-            return res.status(200).json({
-                message: "All farms fetched successfully",
-                farms,
-            });
-        } catch (error) {
-            res.status(500).json({
-                message: "Server error",
-                status: false
-            })
-            return next(error);
-        }
-    }
+    static getById = asyncHandler(async (req: Request, res: Response) => {
+        const id = Number(req.params.id);
 
-    static async getById(req: Request, res: Response, next: NextFunction) {
-        try {
-            const id = Number(req.params.id);
+        const farm = await FarmService.getFarmById(id);
 
-            const farm = await FarmService.getFarmById(id);
+        return res.status(200).json({
+            status: true,
+            message: "Farm fetched successfully",
+            data: farm,
+        });
+    });
 
-            if (!farm) {
-                return res.status(404).json({
-                    message: "Farm not found",
-                });
-            }
+    static getMyFarms = asyncHandler(async (req: AuthRequest, res: Response) => {
+        const userId = req.user!.id;
 
-            return res.status(200).json({
-                message: "Farm fetched successfully",
-                farm,
-            });
-        } catch (error) {
-            res.status(500).json({
-                message: "Server error",
-                status: false
-            })
-            return next(error);
-        }
-    }
+        const farms = await FarmService.getFarmsByUser(userId);
 
-    static async getMyFarms(req: AuthRequest, res: Response, next: NextFunction) {
-        try {
-            const userId = req.user!.id;
+        return res.status(200).json({
+            status: true,
+            message: "My farms fetched successfully",
+            data: farms,
+        });
+    });
 
-            const farms = await FarmService.getFarmsByUser(userId);
+    static update = asyncHandler(async (req: AuthRequest, res: Response) => {
+        const id = Number(req.params.id);
 
-            return res.status(200).json({
-                message: "My farms fetched successfully",
-                farms,
-            });
-        } catch (error) {
-            res.status(500).json({
-                message: "Server error",
-                status: false
-            })
-            return next(error);
-        }
-    }
+        const farm = await FarmService.updateFarm(id, req.body);
 
-    static async update(req: Request, res: Response, next: NextFunction) {
-        try {
-            const id = Number(req.params.id);
-            const {
-                farmName,
-                description,
-                province,
-                district,
-                address,
-                logo,
-                panNo,
-                vatNo,
-                isActive,
-                isVerified
-            } = req.body;
+        return res.status(200).json({
+            status: true,
+            message: "Farm updated successfully",
+            data: farm,
+        });
+    });
 
-            const data = {
-                farmName,
-                description,
-                province,
-                district,
-                address,
-                logo,
-                panNo,
-                vatNo,
-                isActive,
-                isVerified
-            };
+    static delete = asyncHandler(async (req: AuthRequest, res: Response) => {
+        const id = Number(req.params.id);
 
-            const farm = await FarmService.updateFarm(id, data);
-
-            if (!farm) {
-                return res.status(404).json({
-                    status: false,
-                    message: "Farm not found",
-                });
-            }
-
-            return res.status(200).json({
-                status: true,
-                message: "Farm updated successfully",
-                farm,
-            });
-        } catch (error) {
-            res.status(500).json({
-                message: "Server error",
-                status: false
-            })
-            return next(error);
-        }
-    }
-
-    static async delete(req: Request, res: Response, next: NextFunction) {
-        try {
-            const id = Number(req.params.id);
-
-            const deleted = await FarmService.deleteFarm(id);
-
-            if (!deleted) {
-                return res.status(404).json({
-                    status: false,
-                    message: "Farm not found",
-                });
-            }
-
-            return res.status(200).json({
-                status: true,
-                message: "Farm deleted successfully",
-            });
-        } catch (error) {
-            res.status(500).json({
-                message: "Server error",
-                status: false
-            })
-            return next(error);
-        }
-    }
+        await FarmService.deleteFarm(id);
+        return res.status(200).json({
+            status: true,
+            message: "Farm deleted successfully",
+        });
+    });
 }
 
 export default FarmController;

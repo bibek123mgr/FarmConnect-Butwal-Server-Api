@@ -1,5 +1,5 @@
-import express, { Request, Response } from "express";
-import { AuthRoute, FarmRoute } from "./routes/index";
+import express, { NextFunction, Request, Response } from "express";
+import { AuthRoute, FarmRoute, ProductRoute } from "./routes/index";
 import { config } from "./config/index";
 import { errorHandler } from "./utils/error.middleware";
 
@@ -10,9 +10,8 @@ const NODE_ENV = config.NODE_ENV || "development";
 app.use(express.json());
 
 
-app.use((req: Request, _res: Response, next) => {
+app.use((req: Request, _res: Response, next: NextFunction) => {
     console.log(`${req.method} ${req.originalUrl}`);
-    console.log("Body:", req.body);
     return next();
 });
 
@@ -21,7 +20,9 @@ app.get("/", (_req: Request, res: Response) => {
 });
 
 app.use("/api/auth", AuthRoute);
-app.use("/api", FarmRoute);
+app.use("/api/farmers", FarmRoute);
+app.use("/api", ProductRoute);
+
 app.use(errorHandler);
 
 export default app;
