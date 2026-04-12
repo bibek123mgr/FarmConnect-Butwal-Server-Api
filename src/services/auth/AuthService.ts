@@ -3,6 +3,7 @@ import { UserRole } from "../../models/UserModel";
 import { ConflictError, UnauthorizedError } from "../../utils/errors";
 import JwtHelper from "../../helper/jwtHepler";
 import bcrypt from "bcrypt";
+import Farm from "../../models/FarmModel";
 
 interface CreateUserDTO {
     name: string;
@@ -13,7 +14,13 @@ interface CreateUserDTO {
 
 class AuthService {
     static async checkExistingUser(email: string) {
-        const existingUser = await User.findOne({ where: { email } });
+        const existingUser = await User.findOne(
+            {
+                where: { email },
+                include: [{ model: Farm }]
+            },
+
+        );
         if (existingUser) {
             throw new ConflictError('User already exists with this email');
         }
@@ -42,9 +49,17 @@ class AuthService {
     }
 
     static async getUserWithPassword(email: string) {
-        const user = await User.scope('withPassword').findOne({
-            where: { email }
-        });
+        const user = await User.scope('withPassword').findOne(
+            {
+                where: { email },
+                include: [
+                    {
+                        model: Farm,
+                        attributes: ["id"]
+                    }
+                ]
+            }
+        );
 
         if (!user) {
             throw new UnauthorizedError('Invalid credentials');
@@ -63,8 +78,8 @@ class AuthService {
     static generateAuthToken(user: any) {
         return JwtHelper.generateToken({
             id: user.id,
-            email: user.email,
             role: user.role,
+            farmId: user.farm?.id
         });
     }
 

@@ -7,8 +7,8 @@ const JWT_EXPIRES_IN = (config.JWT_EXPIRES_IN ?? "1d") as jwt.SignOptions["expir
 
 interface JwtPayload {
     id: number;
-    email?: string;
     role?: string;
+    farmId?: number
 }
 
 class JwtHelper {

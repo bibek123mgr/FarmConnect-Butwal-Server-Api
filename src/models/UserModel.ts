@@ -7,10 +7,12 @@ import {
     Unique,
     IsEmail,
     BeforeCreate,
-    BeforeUpdate
+    BeforeUpdate,
+    HasOne
 } from "sequelize-typescript";
 import bcrypt from "bcrypt";
 import { config } from "../config/index";
+import Farm from "./FarmModel";
 
 const BCRYPT_SALT = parseInt(config.BCRYPT_SALT as string) || 10;
 
@@ -69,6 +71,9 @@ export class User extends Model {
         allowNull: false,
     })
     declare role: UserRole;
+
+    @HasOne(() => Farm)
+    farm!: Farm;
 
     @Default(true)
     @Column({
