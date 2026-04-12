@@ -1,5 +1,5 @@
 import express, { NextFunction, Request, Response } from "express";
-import { AuthRoute, FarmRoute, ProductRoute } from "./routes/index";
+import { AuthRoute, FarmRoute, ProductCategoryRoute, ProductRoute } from "./routes/index";
 import { config } from "./config/index";
 import { errorHandler } from "./utils/error.middleware";
 
@@ -21,7 +21,7 @@ app.get("/", (_req: Request, res: Response) => {
 
 app.use("/api/auth", AuthRoute);
 app.use("/api/farmers", FarmRoute);
-app.use("/api", ProductRoute);
+app.use("/api", ProductRoute,ProductCategoryRoute);
 
 app.use(errorHandler);
 

@@ -7,15 +7,17 @@ class ProductController {
     // CREATE
     static create = asyncHandler(async (req: AuthRequest, res: Response) => {
         const { name, description, unit, rate, quantity, categoryId } = req.body;
-        const farmerId = req.user!.id;
+        const userId = req.user!.id;
+        const farmId=req.user!.farmId;
         await ProductService.createProduct({
-            farmerId,
+            userId,
             name,
             description,
             unit,
             rate,
             quantity,
-            categoryId
+            categoryId,
+            farmId
         });
 
         return res.status(201).json({

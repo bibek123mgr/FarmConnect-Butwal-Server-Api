@@ -4,7 +4,7 @@ import { Stock } from "../../models/StockModel";
 import { NotFoundError } from "../../utils/errors";
 
 interface CreateProductDTO {
-    farmerId: number;
+    userId: number;
     farmId?: number;
     name: string;
     description?: string;
@@ -21,7 +21,7 @@ class ProductService {
         try {
             const product = await Product.create(
                 {
-                    farmerId: data.farmerId,
+                    farmerId: data.userId,
                     name: data.name,
                     description: data.description,
                     unit: data.unit,
@@ -44,7 +44,7 @@ class ProductService {
                     chalanReturn: 0,
                     rate: data.rate || 0,
                     amount: (data.quantity || 0) * (data.rate || 0),
-                    createdBy: data.farmerId,
+                    createdBy: data.userId,
                     farmId: data.farmId || null,
                     isActive: true,
                 },

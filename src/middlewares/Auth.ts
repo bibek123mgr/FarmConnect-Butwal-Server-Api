@@ -4,8 +4,8 @@ import JwtHelper from "../helper/jwtHepler";
 export interface AuthRequest extends Request {
     user?: {
         id: number;
-        email?: string;
         role?: string;
+        farmId?: number
     };
 }
 

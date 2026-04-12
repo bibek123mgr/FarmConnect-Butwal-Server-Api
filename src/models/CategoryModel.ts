@@ -8,6 +8,7 @@ import {
     HasMany,
     Default,
 } from "sequelize-typescript";
+import User from "./UserModel";
 
 @Table({
     tableName: "categories",
@@ -36,20 +37,6 @@ export class Category extends Model {
     })
     declare slug: string;
 
-    // Self-relation (Parent Category)
-    @ForeignKey(() => Category)
-    @Column({
-        type: DataType.INTEGER,
-        allowNull: true,
-    })
-    declare parentId: number;
-
-    @BelongsTo(() => Category, "parentId")
-    parent!: Category;
-
-    @HasMany(() => Category, "parentId")
-    children!: Category[];
-
     // Optional icon/image
     @Column({
         type: DataType.STRING,
@@ -64,12 +51,26 @@ export class Category extends Model {
     })
     declare sortOrder: number;
 
+
+    @ForeignKey(() => User)
+    @Column({
+        type: DataType.INTEGER,
+        allowNull: false,
+    })
+    declare createdBy: number;
+
+    @BelongsTo(() => User)
+    user!: User;
+
     // Status
     @Default(true)
     @Column({
         type: DataType.BOOLEAN,
     })
     declare isActive: boolean;
+
+
+
 }
 
 export default Category;
