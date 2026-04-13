@@ -9,14 +9,14 @@ class OrderController {
         await OrderService.createOrder({
             customerId: req.user!.id,
             items: req.body.items,
-            paymentMethod: req.body.paymentMethod
+            paymentMethod: req.body.paymentMethod,
+            address: req.body.address
         });
-        res.status(201).json({ status: true, message: "Order created successfully"});
+        res.status(201).json({ status: true, message: "Order created successfully" });
     });
 
     static getAll = asyncHandler(async (req: AuthRequest, res: Response) => {
         const orders = await OrderService.getAllOrders(req.user!.id);
-
         res.status(200).json({ status: true, data: orders });
     });
 

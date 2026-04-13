@@ -1,4 +1,5 @@
 import sequelize from "../config/database";
+import Farm from "../models/FarmModel";
 import Notification from "../models/NotificationModel";
 import OrderItem from "../models/OrderItemModel";
 import Order, { OrderStatus } from "../models/OrderModel";
@@ -6,6 +7,7 @@ import Payment, { PaymentMethod, PaymentStatus } from "../models/PaymentModel";
 import Product from "../models/ProductModel";
 import Stock from "../models/StockModel";
 import { NotFoundError } from "../utils/errors";
+import { Sequelize } from "sequelize";
 
 interface CreateOrderDTO {
     customerId: number;
@@ -16,6 +18,7 @@ interface CreateOrderDTO {
         farmId: number;
     }[];
     paymentMethod: PaymentMethod;
+    address: string
 }
 
 class OrderService {
@@ -34,7 +37,10 @@ class OrderService {
             const order = await Order.create({
                 userId: data.customerId,
                 totalAmount: totalAmount,
-                status: OrderStatus.PENDING
+                status: OrderStatus.PENDING,
+                paymentStatus: PaymentStatus.PENDING,
+                paymentMethod: data.paymentMethod,
+                address: data.address
             }, { transaction: t });
 
             let farmerIds = new Set<number>();
@@ -114,13 +120,59 @@ class OrderService {
     }
 
     static async getAllOrders(userId: number) {
-        return await Order.findAll({
-            where: { customerId: userId },
-            include: [
-                { model: OrderItem, include: [Product] },
-                { model: Payment }
+        const orders = await Order.findAll({
+            where: { userId },
+            attributes: [
+                "id",
+                "totalAmount",
+                "address",
+                "paymentMethod",
+                "paymentStatus",
+                "status",
+                "createdAt"
             ],
-            order: [["createdAt", "DESC"]],
+            include: [
+                {
+                    model: OrderItem,
+                    as: "items",
+                    attributes: [
+                        "id",
+                        "productId",
+                        "quantity",
+                        "subtotal",
+                        "price",
+                        "farmId"
+                    ],
+                    include: [
+                        {
+                            model: Product,
+                            attributes: ["name"]
+                        },
+                        {
+                            model: Farm,
+                            attributes: ["farmName"]
+                        }
+                    ]
+                }
+            ],
+            order: [["createdAt", "DESC"]]
+        });
+
+        return orders.map(order => {
+            const o = order.toJSON();
+
+            o.items = o.items.map((item: any) => ({
+                id: item.id,
+                productId: item.productId,
+                quantity: item.quantity,
+                subtotal: item.subtotal,
+                price: item.price,
+                farmId: item.farmId,
+                productName: item.product?.name,
+                farmName: item.farm?.farmName
+            }));
+
+            return o;
         });
     }
 
@@ -137,14 +189,113 @@ class OrderService {
         return order;
     }
 
-    static async updateOrderStatus(id: number, status: string) {
-        const order = await Order.findByPk(id);
+    static async updateOrderStatus(id: number, status: OrderStatus) {
+        if (status === OrderStatus.CANCELLED) {
+            return await this.cancelOrder(id);
+        }
 
+        const order = await Order.findByPk(id);
         if (!order) throw new NotFoundError("Order not found");
 
         await order.update({ status });
 
+        await Notification.create({
+            userId: order.userId,
+            title: "Order Update",
+            message: `Your order #${order.id} is now ${status}.`,
+            type: "ORDER",
+            meta: {
+                orderId: order.id
+            }
+        });
+
         return order;
+    }
+
+    private static async cancelOrder(id: number) {
+        const order = await Order.findByPk(id);
+
+        if (!order) throw new NotFoundError("Order not found");
+        const t = await sequelize.transaction();
+        try {
+            await order.update(
+                {
+                    isActive: false,
+                    status: OrderStatus.CANCELLED
+                },
+                { transaction: t }
+            );
+
+            const orderItems = await OrderItem.findAll({
+                where: { orderId: order.id },
+                attributes: [
+                    "id",
+                    [Sequelize.col("Farm.userId"), "farmUserId"]
+                ],
+                include: [{
+                    model: Farm,
+                    attributes: []
+                }],
+                transaction: t,
+                raw: true
+            }) as any[];
+
+            for (const item of orderItems) {
+                await Notification.create({
+                    userId: item?.farmUserId,
+                    title: "Order Cancelled",
+                    message: `Your order #${item.id} was cancelled`,
+                    type: "ORDER",
+                    meta: {
+                        orderId: order.id,
+                        orderItemId: item.id
+                    }
+                }, { transaction: t });
+            }
+
+            await Notification.create({
+                userId: order.userId,
+                title: "Order Cancelled",
+                message: `Your order #${order.id} was cancelled`,
+                type: "ORDER",
+                meta: {
+                    orderId: order.id
+                }
+            }, { transaction: t });
+
+            await OrderItem.update(
+                {
+                    isActive: false,
+                },
+                {
+                    where: { orderId: order.id },
+                    transaction: t
+                }
+            );
+
+
+            await Stock.update(
+                {
+                    isActive: false,
+                },
+                {
+                    where: { orderId: order.id },
+                    transaction: t
+                }
+            );
+
+            await Payment.update(
+                { isActive: false },
+                { where: { orderId: order.id }, transaction: t }
+            );
+
+            await t.commit();
+            return order;
+
+        } catch (error) {
+            await t.rollback();
+            throw error;
+        }
     }
 
     static async deleteOrder(id: number) {

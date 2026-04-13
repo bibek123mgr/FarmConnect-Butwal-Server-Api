@@ -12,7 +12,7 @@ import {
 
 import User from "./UserModel";
 import { OrderItem } from "./OrderItemModel";
-import Payment from "./PaymentModel";
+import Payment, { PaymentMethod, PaymentStatus } from "./PaymentModel";
 
 export enum OrderStatus {
     PENDING = "pending",
@@ -42,6 +42,13 @@ export class Order extends Model {
     })
     declare totalAmount: number;
 
+    @Column({
+        type: DataType.STRING,
+        allowNull: false
+    })
+
+    declare address: string;
+
     // 📦 ORDER STATUS
     @Default(OrderStatus.PENDING)
     @Column({
@@ -62,6 +69,19 @@ export class Order extends Model {
 
     @HasMany(() => OrderItem)
     items!: OrderItem[];
+
+    @Column({
+        type: DataType.ENUM(...Object.values(PaymentMethod)),
+        allowNull: false,
+    })
+    declare paymentMethod: PaymentMethod;
+
+    @Default(PaymentStatus.PENDING)
+    @Column({
+        type: DataType.ENUM(...Object.values(PaymentStatus)),
+        allowNull: false,
+    })
+    declare paymentStatus: PaymentStatus;
 
     @HasOne(() => Payment)
     payment!: Payment;

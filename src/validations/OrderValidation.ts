@@ -62,6 +62,7 @@ class OrderValidation {
                 "any.only": "Invalid payment method",
                 "any.required": "Payment method is required",
             }),
+        address: BaseValidation.getString("Address is required"),
     });
 
     public static updateStatus = Joi.object({
