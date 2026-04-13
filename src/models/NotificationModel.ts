@@ -10,12 +10,10 @@ import {
 import User from "./UserModel";
 
 export enum NotificationType {
-    INFO = "INFO",
-    SUCCESS = "SUCCESS",
-    WARNING = "WARNING",
-    ERROR = "ERROR",
     ORDER = "ORDER",
+    PAYMENT = "PAYMENT",
     STOCK = "STOCK",
+    SYSTEM = "SYSTEM",
 }
 
 @Table({
@@ -23,6 +21,7 @@ export enum NotificationType {
     timestamps: true,
 })
 export class Notification extends Model {
+
     @Column({
         primaryKey: true,
         autoIncrement: true,
@@ -53,14 +52,7 @@ export class Notification extends Model {
     declare message: string;
 
     @Column({
-        type: DataType.ENUM(
-            "INFO",
-            "SUCCESS",
-            "WARNING",
-            "ERROR",
-            "ORDER",
-            "STOCK"
-        ),
+        type: DataType.ENUM("ORDER", "PAYMENT", "STOCK", "SYSTEM"),
         allowNull: false,
     })
     declare type: NotificationType;
@@ -77,18 +69,11 @@ export class Notification extends Model {
     })
     declare meta: object;
 
-    @Column({
-        type: DataType.DATE,
-        allowNull: true,
-    })
-    declare readAt: Date;
-
-    @Default(false)
+    @Default(true)
     @Column({
         type: DataType.BOOLEAN,
-        defaultValue: true,
     })
-    declare status: boolean;
+    declare isActive: boolean;
 }
 
 export default Notification;

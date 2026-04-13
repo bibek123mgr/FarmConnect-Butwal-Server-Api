@@ -4,13 +4,10 @@ import ProductService from "../../services/farmer/ProductModel";
 import { AuthRequest } from "../../middlewares/Auth";
 
 class ProductController {
-    // CREATE
     static create = asyncHandler(async (req: AuthRequest, res: Response) => {
         const { name, description, unit, rate, quantity, categoryId } = req.body;
         const userId = req.user!.id;
         const farmId = req.user!.farmId;
-
-        console.log(req.user);
         await ProductService.createProduct({
             userId,
             name,
@@ -28,17 +25,14 @@ class ProductController {
         });
     });
 
-    // GET ALL
-    static getAll = asyncHandler(async (req: Request, res: Response) => {
+    static getAll = asyncHandler(async (_req: Request, res: Response) => {
         const products = await ProductService.getAllProducts();
-
         return res.status(200).json({
             status: true,
             data: products,
         });
     });
 
-    // GET BY ID
     static getById = asyncHandler(async (req: Request, res: Response) => {
         const id = Number(req.params.id);
 
@@ -50,7 +44,6 @@ class ProductController {
         });
     });
 
-    // UPDATE
     static update = asyncHandler(async (req: Request, res: Response) => {
         const id = Number(req.params.id);
 
@@ -62,7 +55,6 @@ class ProductController {
         });
     });
 
-    // DELETE (soft delete)
     static delete = asyncHandler(async (req: Request, res: Response) => {
         const id = Number(req.params.id);
 
