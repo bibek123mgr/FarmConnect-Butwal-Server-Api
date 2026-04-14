@@ -5,11 +5,11 @@ import {
     DataType,
     ForeignKey,
     BelongsTo,
-    HasMany,
     Default,
 } from "sequelize-typescript";
 import User from "./UserModel";
-import CartItem from "./CartItemModel";
+import Product from "./ProductModel";
+import Farm from "./FarmModel";
 
 @Table({
     tableName: "carts",
@@ -33,8 +33,43 @@ export class Cart extends Model {
     @BelongsTo(() => User)
     user!: User;
 
-    @HasMany(() => CartItem)
-    items!: CartItem[];
+    @ForeignKey(() => Product)
+    @Column({
+        type: DataType.INTEGER,
+        allowNull: false,
+    })
+    declare productId: number;
+
+    @BelongsTo(() => Product)
+    product!: Product;
+
+    @ForeignKey(() => Farm)
+    @Column({
+        type: DataType.INTEGER,
+        allowNull: false,
+    })
+    declare farmId: number;
+
+    @BelongsTo(() => Farm)
+    farm!: Farm;
+
+    @Column({
+        type: DataType.DECIMAL(10, 2),
+        allowNull: false,
+    })
+    declare quantity: number;
+
+    @Column({
+        type: DataType.DECIMAL(10, 2),
+        allowNull: false,
+    })
+    declare price: number;
+
+    @Column({
+        type: DataType.DECIMAL(10, 2),
+        allowNull: false,
+    })
+    declare total: number;
 
     @Default(true)
     @Column({

@@ -3,11 +3,13 @@ import FarmRoute from "./FarmRoute";
 import ProductRoute from "./ProductRoute";
 import ProductCategoryRoute from "./ProductCategoryRoute";
 import OrderRoute from "./OrderRoute";
+import CartRoute from "./CartRoute";
 
 export {
     AuthRoute,
     FarmRoute,
     ProductRoute,
     ProductCategoryRoute,
-    OrderRoute
+    OrderRoute,
+    CartRoute
 }
