@@ -4,6 +4,7 @@ import ProductRoute from "./ProductRoute";
 import ProductCategoryRoute from "./ProductCategoryRoute";
 import OrderRoute from "./OrderRoute";
 import CartRoute from "./CartRoute";
+import PaymentRoute from "./PaymentRoute";
 
 export {
     AuthRoute,
@@ -11,5 +12,6 @@ export {
     ProductRoute,
     ProductCategoryRoute,
     OrderRoute,
-    CartRoute
+    CartRoute,
+    PaymentRoute
 }
