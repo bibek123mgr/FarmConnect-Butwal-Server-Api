@@ -5,7 +5,7 @@ import OrderItem from "../models/OrderItemModel";
 import Order, { OrderStatus } from "../models/OrderModel";
 import Payment, { PaymentMethod, PaymentStatus } from "../models/PaymentModel";
 import Product from "../models/ProductModel";
-import Stock from "../models/StockModel";
+import Stock, { comesFrom } from "../models/StockModel";
 import { NotFoundError } from "../utils/errors";
 import { Sequelize } from "sequelize";
 
@@ -178,15 +178,57 @@ class OrderService {
 
     static async getOrderById(id: number) {
         const order = await Order.findByPk(id, {
-            include: [
-                { model: OrderItem, include: [Product] },
-                { model: Payment }
+            attributes: [
+                "id",
+                "totalAmount",
+                "address",
+                "paymentMethod",
+                "paymentStatus",
+                "status",
+                "createdAt"
             ],
+            include: [
+                {
+                    model: OrderItem,
+                    as: "items",
+                    attributes: [
+                        "id",
+                        "productId",
+                        "quantity",
+                        "subtotal",
+                        "price",
+                        "farmId"
+                    ],
+                    include: [
+                        {
+                            model: Product,
+                            attributes: ["name"]
+                        },
+                        {
+                            model: Farm,
+                            attributes: ["farmName"]
+                        }
+                    ]
+                }
+            ]
         });
 
         if (!order) throw new NotFoundError("Order not found");
 
-        return order;
+        const o = order.toJSON();
+
+        o.items = o.items.map((item: any) => ({
+            id: item.id,
+            productId: item.productId,
+            quantity: item.quantity,
+            subtotal: item.subtotal,
+            price: item.price,
+            farmId: item.farmId,
+            productName: item.product?.name,
+            farmName: item.farm?.farmName
+        }));
+
+        return o;
     }
 
     static async updateOrderStatus(id: number, status: OrderStatus) {
@@ -227,10 +269,10 @@ class OrderService {
             );
 
             const orderItems = await OrderItem.findAll({
-                where: { orderId: order.id },
+                where: { orderId: id },
                 attributes: [
                     "id",
-                    [Sequelize.col("Farm.userId"), "farmUserId"]
+                    [Sequelize.col("farm.userId"), "farmUserId"]
                 ],
                 include: [{
                     model: Farm,
@@ -247,7 +289,7 @@ class OrderService {
                     message: `Your order #${item.id} was cancelled`,
                     type: "ORDER",
                     meta: {
-                        orderId: order.id,
+                        orderId: id,
                         orderItemId: item.id
                     }
                 }, { transaction: t });
@@ -256,10 +298,10 @@ class OrderService {
             await Notification.create({
                 userId: order.userId,
                 title: "Order Cancelled",
-                message: `Your order #${order.id} was cancelled`,
+                message: `Your order #${id} was cancelled`,
                 type: "ORDER",
                 meta: {
-                    orderId: order.id
+                    orderId: id
                 }
             }, { transaction: t });
 
@@ -268,25 +310,27 @@ class OrderService {
                     isActive: false,
                 },
                 {
-                    where: { orderId: order.id },
+                    where: { orderId: id },
                     transaction: t
                 }
             );
-
 
             await Stock.update(
                 {
                     isActive: false,
                 },
                 {
-                    where: { orderId: order.id },
+                    where: {
+                        tableId: id,
+                        comesFrom: comesFrom.SALES,
+                    },
                     transaction: t
                 }
             );
 
             await Payment.update(
                 { isActive: false },
-                { where: { orderId: order.id }, transaction: t }
+                { where: { orderId: id }, transaction: t }
             );
 
             await t.commit();

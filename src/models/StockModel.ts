@@ -3,6 +3,14 @@ import Product from "./ProductModel";
 import User from "./UserModel";
 import Farm from "./FarmModel";
 
+export enum comesFrom {
+    OPENING_STOCK = "opening_stock",
+    SALES = "sales",
+    SALES_RETURN = "sales_return",
+    DAMAGE = "damage",
+    CHALAN = "chalan",
+    CHALAN_RETURN = "chalan_return",
+}
 @Table({
     tableName: "stock",
     timestamps: true,
@@ -93,6 +101,18 @@ export class Stock extends Model {
         type: DataType.BOOLEAN,
     })
     declare isActive: boolean;
+
+    @Column({
+        type: DataType.INTEGER,
+        allowNull: false,
+    })
+    declare tableId: number;
+
+    @Column({
+        type: DataType.ENUM(...Object.values(comesFrom)),
+        allowNull: false,
+    })
+    declare comesFrom: comesFrom;
 
 }
 

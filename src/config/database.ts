@@ -25,7 +25,7 @@ export const initDB = async () => {
     try {
         await sequelize.authenticate();
         console.log("✅ Database connection established successfully");
-        await sequelize.sync({ alter: false });
+        await sequelize.sync({alter: false});
         console.log("✅ Database synced successfully");
     } catch (error) {
         console.error("❌ Database error:", error);

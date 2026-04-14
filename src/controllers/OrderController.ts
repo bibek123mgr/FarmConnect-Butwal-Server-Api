@@ -22,20 +22,24 @@ class OrderController {
 
     static getById = asyncHandler(async (req: Request, res: Response) => {
         const order = await OrderService.getOrderById(Number(req.params.id));
-
-        res.status(200).json({ status: true, data: order });
+        res.status(200).json(
+            {
+                status: true,
+                message: "Order fetched successfully",
+                data: order
+            }
+        );
     });
 
     static updateStatus = asyncHandler(async (req: Request, res: Response) => {
-        const order = await OrderService.updateOrderStatus(
+        await OrderService.updateOrderStatus(
             Number(req.params.id),
             req.body.status
         );
 
         res.status(200).json({
             status: true,
-            message: "Order status updated",
-            data: order
+            message: "Order status updated"
         });
     });
 
