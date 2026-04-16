@@ -6,12 +6,16 @@ interface IPaymentData {
     amount: number;
 }
 
+export interface IEsewaInitializeResponse {
+    formHtml: string;
+    transaction_uuid: string;
+}
+
 class Payment {
-    public static async inititeEsewaPayment(data: IPaymentData) {
+    public static async inititeEsewaPayment(data: IPaymentData): Promise<IEsewaInitializeResponse> {
         const amount = 100;
-        const transaction_uuid =
-            EsewaCredentialsHelper.generateUniqueId();
-        console.log("transaction_uuid", transaction_uuid);
+        const transaction_uuid = EsewaCredentialsHelper.generateUniqueId();
+
         const message = `total_amount=${amount},transaction_uuid=${transaction_uuid},product_code=${config.ESEWA_MERCHENT_ID}`;
 
         const signature = EsewaCredentialsHelper.generateHash(
@@ -20,49 +24,41 @@ class Payment {
         );
 
         const payload = {
-            amount: amount,
-            failure_url: config.PAYMENT_FAILURE_URL,
-            success_url: config.PAYMENT_SUCCESS_URL,
-            product_delivery_charge: 0,
-            product_service_charge: 0,
-            product_code: config.ESEWA_MERCHENT_ID,
-            total_amount: amount,
-            signature: signature,
-            signed_field_names: "total_amount,transaction_uuid,product_code",
+            amount,
             tax_amount: 0,
-            transaction_uuid: transaction_uuid,
+            total_amount: amount,
+            transaction_uuid,
+            product_code: config.ESEWA_MERCHENT_ID,
+            product_service_charge: 0,
+            product_delivery_charge: 0,
+            success_url: config.PAYMENT_SUCCESS_URL,
+            failure_url: config.PAYMENT_FAILURE_URL,
+            signed_field_names: "total_amount,transaction_uuid,product_code",
+            signature,
         };
 
-        try {
-            const response = await axios.post(
-                config.ESEWA_PAYMENT_INITIATE_URL as string,
-                payload,
-                {
-                    headers: {
-                        "Content-Type": "application/json",
-                    },
-                }
-            );
-
-            return {
-                success: true,
-                data: response.data,
-                transaction_uuid,
-            };
-
-        } catch (error: any) {
-            console.error("eSewa Error:", error?.response?.data || error.message);
-            throw new Error(
-                error?.response?.data?.message || error.message || "Payment initiation failed"
-            );
-        }
+        const formHtml = `
+        <html>
+        <body onload="document.forms[0].submit()">
+            <form action="${config.ESEWA_PAYMENT_INITIATE_URL}" method="POST">
+                ${Object.entries(payload)
+                .map(([key, value]) =>
+                    `<input type="hidden" name="${key}" value="${value}" />`
+                )
+                .join("")}
+            </form>
+        </body>
+        </html>
+        `;
+        console.log("formHtml", transaction_uuid);
+        return { transaction_uuid, formHtml };
     }
 
     public static async verifyEsewaPayment(transaction_uuid: string) {
         try {
             const payload = {
-                transaction_uuid,
-                amount: 100,
+                transaction_uuid: 'id-1776334867786-5nnc7kf1b',
+                total_amount: 100,
                 product_code: config.ESEWA_MERCHENT_ID
             }
             const response = await axios.get(
@@ -71,7 +67,7 @@ class Payment {
                     params: payload,
                 }
             );
-
+            console.log("response", response.data);
             return {
                 success: true,
                 data: response.data,

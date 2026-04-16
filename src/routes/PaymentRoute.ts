@@ -1,12 +1,13 @@
 import Router from "express";
 import Payment from "../middlewares/Payment";
+import PaymentController from "../controllers/PaymetController";
 const router = Router();
 
 
 router
     .route("/initite-esewa-payment")
-    .post(
-        Payment.inititeEsewaPayment);
+    .get(
+        PaymentController.inititeEsewaPayment);
 
 router
     .route("/verify-esewa-payment")

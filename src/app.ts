@@ -20,8 +20,10 @@ app.get("/", (_req: Request, res: Response) => {
 });
 
 app.use("/api/auth", AuthRoute);
+app.use("/api", PaymentRoute);
+
 app.use("/api/farmers", FarmRoute);
-app.use("/api", ProductRoute, ProductCategoryRoute, OrderRoute, CartRoute, PaymentRoute);
+app.use("/api", ProductRoute, ProductCategoryRoute, OrderRoute, CartRoute);
 
 app.use(errorHandler);
 
