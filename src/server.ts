@@ -10,7 +10,6 @@ server.on("listening", async () => {
     console.log(`✅ Server running on ${PORT}`);
     await initDB();
 });
-
 server.on("error", (err: any) => {
     if (err.code === "EADDRINUSE") {
         console.error(`❌ Port ${PORT} already in use`);

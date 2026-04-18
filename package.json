@@ -33,6 +33,7 @@
   "license": "ISC",
   "description": "",
   "dependencies": {
+    "@bibek_magar/bikram-sambat-converter": "^1.0.0",
     "axios": "^1.15.0",
     "bcrypt": "^6.0.0",
     "crypto": "^1.0.1",
