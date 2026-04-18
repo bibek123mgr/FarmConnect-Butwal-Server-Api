@@ -10,7 +10,6 @@ import {
 import Product from "./ProductModel";
 import User from "./UserModel";
 import Farm from "./FarmModel";
-import Production from "./ProductionModel";
 
 @Table({
     tableName: "damages",

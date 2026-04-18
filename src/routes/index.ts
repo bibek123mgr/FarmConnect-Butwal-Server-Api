@@ -7,6 +7,7 @@ import CartRoute from "./CartRoute";
 import PaymentRoute from "./PaymentRoute";
 import DamageRoute from './DamageRoute';
 import ProductionRoute from './ProductionRoute'
+import ProductPriceRoute from "./ProductPriceRoute";
 
 export {
     AuthRoute,
@@ -17,5 +18,6 @@ export {
     CartRoute,
     PaymentRoute,
     DamageRoute,
-    ProductionRoute
+    ProductionRoute,
+    ProductPriceRoute
 }

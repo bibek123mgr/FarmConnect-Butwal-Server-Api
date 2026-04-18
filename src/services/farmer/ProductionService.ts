@@ -1,8 +1,9 @@
+import { Sequelize } from "sequelize-typescript";
 import sequelize from "../../config/database";
 import Farm from "../../models/FarmModel";
 import Production from "../../models/ProductionModel";
 import Product from "../../models/ProductModel";
-import Stock from "../../models/StockModel";
+import Stock, { comesFrom } from "../../models/StockModel";
 import { NotFoundError } from "../../utils/errors";
 
 interface CreateProductionDTO {
@@ -38,7 +39,7 @@ class ProductionService {
             // Stock increase (production means incoming stock)
             await Stock.create({
                 productId: data.productId,
-                openingStock: data.quantity,
+                production: data.quantity,
                 sales: 0,
                 salesReturn: 0,
                 damage: 0,
@@ -47,7 +48,53 @@ class ProductionService {
                 rate: data.costPerUnit || 0,
                 amount: (data.costPerUnit || 0) * data.quantity,
                 farmId: data.farmId,
-                createdBy: data.userId
+                createdBy: data.userId,
+                tableId: production.id,
+                comesFrom: comesFrom.PRODUCTION
+            }, { transaction: t });
+
+            await t.commit();
+            return production;
+
+        } catch (error) {
+            await t.rollback();
+            throw error;
+        }
+    }
+
+    static async updateProduction(id: number, data: Partial<CreateProductionDTO>) {
+        const t = await sequelize.transaction();
+
+        try {
+            const production = await Production.findByPk(id, { transaction: t });
+            if (!production) throw new NotFoundError("Production not found");
+
+            const newQuantity = data.quantity || 0;
+            const newCost = data.costPerUnit || 0;
+            const amount = newCost * newQuantity;
+
+            await production.update({
+                productId: data.productId,
+                farmId: data.farmId,
+                quantity: newQuantity,
+                costPerUnit: newCost,
+                remarks: data.remarks
+            }, { transaction: t });
+
+            const stock = await Stock.findOne({
+                where: {
+                    tableId: id,
+                    comesFrom: comesFrom.PRODUCTION
+                },
+                transaction: t,
+                lock: t.LOCK.UPDATE
+            });
+
+            if (!stock) throw new NotFoundError("Stock entry not found");
+            await stock.update({
+                production: newQuantity,
+                rate: newCost,
+                amount: amount
             }, { transaction: t });
 
             await t.commit();
@@ -62,20 +109,45 @@ class ProductionService {
     static async getAllProductions(userId: number) {
         return await Production.findAll({
             where: { userId, isActive: true },
-            include: [
-                { model: Product, attributes: ["name"] },
-                { model: Farm, attributes: ["farmName"] }
+            attributes: [
+                "id",
+                "productId",
+                [Sequelize.col("product.name"), "productName"],
+                "farmId",
+                [Sequelize.col("farm.farmName"), "farmName"],
+                "quantity",
+                "costPerUnit",
+                "remarks",
+                "createdAt"
             ],
-            order: [["createdAt", "DESC"]]
+            include: [
+                { model: Product, attributes: [] },
+                { model: Farm, attributes: [] }
+            ],
+            order: [["createdAt", "DESC"]],
+            raw: true
         });
     }
 
     static async getProductionById(id: number) {
         const production = await Production.findByPk(id, {
+            attributes: [
+                "id",
+                "productId",
+                [Sequelize.col("product.name"), "productName"],
+                "farmId",
+                [Sequelize.col("farm.farmName"), "farmName"],
+                "quantity",
+                "costPerUnit",
+                "remarks",
+                "createdAt"
+            ],
             include: [
-                { model: Product, attributes: ["name"] },
-                { model: Farm, attributes: ["farmName"] }
-            ]
+                { model: Product, attributes: [] },
+                { model: Farm, attributes: [] }
+            ],
+            order: [["createdAt", "DESC"]],
+            raw: true
         });
 
         if (!production) throw new NotFoundError("Production not found");
@@ -87,7 +159,7 @@ class ProductionService {
         if (!production) throw new NotFoundError("Production not found");
 
         await production.update({ isActive: false });
-        return true;
+        await Stock.update({ isActive: false }, { where: { tableId: id, comesFrom: comesFrom.PRODUCTION } });
     }
 }
 

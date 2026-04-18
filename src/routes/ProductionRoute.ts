@@ -6,14 +6,16 @@ import ProductionController from "../controllers/farmer/ProductionController";
 
 const router = Router();
 
+router.use(Auth);
 router
     .route("/productions")
-    .post(Auth, validate(ProductionValidation.create), ProductionController.create)
-    .get(Auth, ProductionController.getAll);
+    .post(validate(ProductionValidation.create), ProductionController.create)
+    .get(ProductionController.getAll);
 
 router
     .route("/productions/:id")
-    .get(Auth, ProductionController.getById)
-    .delete(Auth, ProductionController.delete);
+    .put(validate(ProductionValidation.create), ProductionController.update)
+    .get(ProductionController.getById)
+    .delete(ProductionController.delete);
 
 export default router;

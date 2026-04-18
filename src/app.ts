@@ -1,5 +1,5 @@
 import express, { NextFunction, Request, Response } from "express";
-import { AuthRoute, CartRoute, DamageRoute, FarmRoute, OrderRoute, PaymentRoute, ProductCategoryRoute, ProductionRoute, ProductRoute } from "./routes/index";
+import { AuthRoute, CartRoute, DamageRoute, FarmRoute, OrderRoute, PaymentRoute, ProductCategoryRoute, ProductionRoute, ProductPriceRoute, ProductRoute } from "./routes/index";
 import { config } from "./config/index";
 import { errorHandler } from "./utils/error.middleware";
 
@@ -23,7 +23,14 @@ app.use("/api/auth", AuthRoute);
 app.use("/api", PaymentRoute);
 
 app.use("/api/farmers", FarmRoute);
-app.use("/api", ProductRoute, ProductCategoryRoute, OrderRoute, CartRoute,DamageRoute, ProductionRoute);
+app.use("/api", 
+    ProductRoute, 
+    ProductCategoryRoute, 
+    OrderRoute, 
+    CartRoute, 
+    DamageRoute, 
+    ProductionRoute, 
+    ProductPriceRoute);
 
 app.use(errorHandler);
 

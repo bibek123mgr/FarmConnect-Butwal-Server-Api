@@ -5,6 +5,7 @@ import Farm from "./FarmModel";
 
 export enum comesFrom {
     OPENING_STOCK = "opening_stock",
+    PRODUCTION = "production",
     SALES = "sales",
     SALES_RETURN = "sales_return",
     DAMAGE = "damage",
@@ -34,6 +35,12 @@ export class Stock extends Model {
         defaultValue: 0,
     })
     declare openingStock: number;
+
+    @Column({
+        type: DataType.DECIMAL(10, 2),
+        defaultValue: 0,
+    })
+    declare production: number;
 
     @Column({
         type: DataType.DECIMAL(10, 2),

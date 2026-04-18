@@ -48,3 +48,69 @@ export class ForbiddenError extends AppError {
         super(message, 403);
     }
 }
+
+export class BadRequestError extends AppError {
+    constructor(message: string) {
+        super(message, 400);
+    }
+}
+
+export class PaymentError extends AppError {
+    constructor(message: string) {
+        super(message, 400);
+    }
+}
+
+export class PaymentRequiredError extends AppError {
+    constructor(message: string) {
+        super(message, 402);
+    }
+}
+
+export class GatewayTimeoutError extends AppError {
+    constructor(message: string) {
+        super(message, 504);
+    }
+}
+
+export class ServiceUnavailableError extends AppError {
+    constructor(message: string) {
+        super(message, 503);
+    }
+}
+
+export class TooManyRequestsError extends AppError {
+    constructor(message: string) {
+        super(message, 429);
+    }
+}
+
+export class PayloadTooLargeError extends AppError {
+    constructor(message: string) {
+        super(message, 413);
+    }
+}
+
+export class UnsupportedMediaTypeError extends AppError {
+    constructor(message: string) {
+        super(message, 415);
+    }
+}
+
+export class NotAcceptableError extends AppError {
+    constructor(message: string) {
+        super(message, 406);
+    }
+}
+
+export class RequestTimeoutError extends AppError {
+    constructor(message: string) {
+        super(message, 408);
+    }
+}
+
+export class NothingChangedError extends AppError {
+    constructor(message: string) {
+        super(message, 405);
+    }
+}

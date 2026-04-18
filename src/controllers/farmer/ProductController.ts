@@ -1,6 +1,6 @@
 import { Request, Response } from "express";
 import { asyncHandler } from "../../utils/asyncHandler";
-import ProductService from "../../services/farmer/ProductModel";
+import ProductService from "../../models/ProductModel";
 import { AuthRequest } from "../../middlewares/Auth";
 
 class ProductController {
@@ -47,7 +47,7 @@ class ProductController {
     static update = asyncHandler(async (req: Request, res: Response) => {
         const id = Number(req.params.id);
 
-       await ProductService.updateProduct(id, req.body);
+        await ProductService.updateProduct(id, req.body);
 
         return res.status(200).json({
             status: true,

@@ -21,6 +21,15 @@ class ProductionController {
         });
     });
 
+    static update = asyncHandler(async (req: Request, res: Response) => {
+        await ProductionService.updateProduction(Number(req.params.id), req.body);
+
+        res.status(200).json({
+            status: true,
+            message: "Production updated successfully"
+        });
+    });
+
     static getAll = asyncHandler(async (req: AuthRequest, res: Response) => {
         const data = await ProductionService.getAllProductions(req.user!.id);
 

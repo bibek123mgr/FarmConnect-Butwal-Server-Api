@@ -5,15 +5,16 @@ import DamageValidation from "../validations/DamageValidation";
 import DamageController from "../controllers/farmer/DamageController";
 
 const router = Router();
-
+router.use(Auth);
 router
     .route("/damages")
-    .post(Auth, validate(DamageValidation.create), DamageController.create)
-    .get(Auth, DamageController.getAll);
+    .post(validate(DamageValidation.create), DamageController.create)
+    .get(DamageController.getAll);
 
 router
     .route("/damages/:id")
-    .get(Auth, DamageController.getById)
-    .delete(Auth, DamageController.delete);
+    .put(validate(DamageValidation.create), DamageController.update)
+    .get(DamageController.getById)
+    .delete(DamageController.delete);
 
 export default router;
