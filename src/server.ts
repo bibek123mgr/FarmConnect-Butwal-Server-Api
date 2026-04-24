@@ -1,10 +1,13 @@
 import app from "./app";
 import { initDB } from "./config/database";
 import { config } from "./config/index";
+import { initSocket } from "./socket/socket";
 
 const PORT = config.PORT || 5000;
 
 const server = app.listen(PORT);
+initSocket(server);
+
 
 server.on("listening", async () => {
     console.log(`✅ Server running on ${PORT}`);

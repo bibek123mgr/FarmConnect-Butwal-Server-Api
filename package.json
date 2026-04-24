@@ -39,11 +39,13 @@
     "crypto": "^1.0.1",
     "dotenv": "^17.4.1",
     "express": "^5.2.1",
+    "express-rate-limit": "^8.4.0",
     "joi": "^18.1.2",
     "jsonwebtoken": "^9.0.3",
     "mysql2": "^3.22.0",
     "rebuild": "^0.1.2",
-    "sequelize": "^6.37.8"
+    "sequelize": "^6.37.8",
+    "socket.io": "^4.8.3"
   },
   "devDependencies": {
     "@types/bcrypt": "^6.0.0",
@@ -56,5 +58,9 @@
     "ts-node": "^10.9.2",
     "ts-node-dev": "^2.0.0",
     "typescript": "^6.0.2"
+  },
+  "optionalDependencies": {
+    "bufferutil": "^4.1.0",
+    "utf-8-validate": "^6.0.6"
   }
 }
