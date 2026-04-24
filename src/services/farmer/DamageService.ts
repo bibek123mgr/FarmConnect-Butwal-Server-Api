@@ -1,4 +1,3 @@
-import { table } from "node:console";
 import sequelize from "../../config/database";
 import Damage from "../../models/DamageModel";
 import Farm from "../../models/FarmModel";

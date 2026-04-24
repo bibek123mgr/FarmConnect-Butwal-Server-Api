@@ -25,7 +25,6 @@ class OrderService {
 
     static async createOrder(data: CreateOrderDTO) {
         const t = await sequelize.transaction();
-        console.log(data);
 
         try {
             let totalAmount = data.items.reduce((total, item) => {
@@ -77,7 +76,9 @@ class OrderService {
                     rate: price,
                     amount: subtotal,
                     farmId: item.farmId,
-                    createdBy: data.customerId
+                    createdBy: data.customerId,
+                    tableId: order.id,
+                    comesFrom: comesFrom.SALES
                 }, { transaction: t });
             }
             await Payment.create({
@@ -111,7 +112,12 @@ class OrderService {
                 }
             }, { transaction: t });
             await t.commit();
-            return order;
+            return {
+                farmerIds: Array.from(farmerIds),
+                orderId: order.id,
+                userId: data.customerId,
+                success: true
+            };
 
         } catch (error) {
             await t.rollback();

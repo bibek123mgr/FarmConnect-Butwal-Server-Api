@@ -2,16 +2,43 @@ import { Response, Request } from "express";
 import { asyncHandler } from "../utils/asyncHandler";
 import { AuthRequest } from "../middlewares/Auth";
 import OrderService from "../services/OrderService";
+import { sendNotificationToUser } from "../socket/socket";
 
 class OrderController {
 
     static create = asyncHandler(async (req: AuthRequest, res: Response) => {
-        await OrderService.createOrder({
+        const order = await OrderService.createOrder({
             customerId: req.user!.id,
             items: req.body.items,
             paymentMethod: req.body.paymentMethod,
             address: req.body.address
         });
+        if (order.success) {
+
+            order.farmerIds.forEach((farmerId: number) => {
+                sendNotificationToUser(
+                    farmerId.toString(),
+                    "newOrder",
+                    {
+                        userId: farmerId,
+                        title: "New Order",
+                        message: `You received a new order #${order.orderId}`,
+                        type: "ORDER"
+                    }
+                );
+            });
+
+            sendNotificationToUser(
+                order.userId.toString(),
+                "orderPlaced",
+                {
+                    userId: order.userId,
+                    title: "Order Placed",
+                    message: `Your order #${order.orderId} has been placed successfully`,
+                    type: "ORDER"
+                }
+            );
+        }
         res.status(201).json({ status: true, message: "Order created successfully" });
     });
 
