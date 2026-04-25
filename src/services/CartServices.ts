@@ -2,6 +2,7 @@ import { Sequelize } from "sequelize-typescript";
 import Cart from "../models/CartModel";
 import Product from "../models/ProductModel";
 import { NotFoundError } from "../utils/errors";
+import redisClient from "../redis/redis";
 
 export interface IAddToCart {
     userId: number;
@@ -13,7 +14,7 @@ export interface IAddToCart {
 
 class CartService {
     static async addToCart(data: IAddToCart) {
-        const total = data.quantity * data.price;
+        const key = `cart:user:${data.userId}`;
 
         const existing = await Cart.findOne({
             where: {
@@ -23,8 +24,12 @@ class CartService {
             },
         });
 
+        let newQty: number;
+        let cartId: number;
+
         if (existing) {
-            const newQty = Number(existing.quantity) + data.quantity;
+            newQty = Number(existing.quantity) + data.quantity;
+            cartId = existing.id;
             const newTotal = newQty * data.price;
 
             await existing.update({
@@ -32,18 +37,56 @@ class CartService {
                 price: data.price,
                 total: newTotal,
             });
+        } else {
+            newQty = data.quantity;
 
-            return existing;
+            const cart = await Cart.create({
+                ...data,
+                total: data.quantity * data.price,
+                isActive: true,
+            });
+
+            cartId = cart.id;
         }
 
-        return await Cart.create({
-            ...data,
-            total,
-            isActive: true,
-        });
+        await redisClient.hset(key, data.productId, JSON.stringify({ id: cartId, qty: newQty }));
+        await redisClient.expire(key, 7 * 24 * 60 * 60);
+        return true;
     }
 
     static async getMyCart(userId: number) {
+
+        const key = `cart:user:${userId}`;
+
+        const cart = await redisClient.hgetall(key);
+        const productIds = Object.keys(cart).map(Number);
+
+        if (productIds.length > 0) {
+            const products = await Product.findAll({
+                where: { id: productIds },
+                attributes: ["id", "name", "rate", "farmId"]
+            });
+
+            return products.map((product: any) => {
+                const { id, name, rate, farmId } = product;
+
+                const raw = cart[id];
+
+                const parsed = JSON.parse(raw);
+
+                return {
+                    cartId: parsed.id,
+                    productId: id,
+                    productName: name,
+                    quantity: parsed.qty,
+                    price:rate,
+                    total: parsed.qty * rate,
+                    farmId,
+                    userId
+                };
+            });
+        }
+
         return await Cart.findAll({
             where: { userId, isActive: true },
             attributes: [
@@ -54,8 +97,7 @@ class CartService {
                 "price",
                 "total",
                 "farmId",
-                "userId",
-                "createdAt"
+                "userId"
             ],
             include: [
                 {

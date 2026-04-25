@@ -6,7 +6,7 @@ import CartService from "../services/CartServices";
 class CartController {
     static add = asyncHandler(async (req: AuthRequest, res: Response) => {
         const userId = req.user!.id;
-
+     
         await CartService.addToCart({
             userId,
             ...req.body,

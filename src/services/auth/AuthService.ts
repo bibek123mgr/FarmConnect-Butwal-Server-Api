@@ -83,6 +83,14 @@ class AuthService {
         });
     }
 
+    static generateRefreshToken(user: any) {
+        return JwtHelper.generateRefreshToken({
+            id: user.id,
+            role: user.role,
+            farmId: user.farm?.id
+        });
+    }
+
     static async registerUser(data: CreateUserDTO) {
         await this.checkExistingUser(data.email);
         const user = await this.createUser(data);
@@ -94,7 +102,8 @@ class AuthService {
         const user = await this.getUserWithPassword(email);
         await this.validatePassword(password, user.password);
         const token = this.generateAuthToken(user);
-        return { user, token };
+        const refreshToken = this.generateRefreshToken(user);
+        return { user, token, refreshToken };
     }
 }
 

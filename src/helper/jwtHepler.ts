@@ -18,6 +18,12 @@ class JwtHelper {
         });
     }
 
+    static generateRefreshToken(payload: JwtPayload) {
+        return jwt.sign(payload, JWT_SECRET, {
+            expiresIn: "7d",
+        });
+    }
+
     static verifyToken(token: string) {
         return jwt.verify(token, JWT_SECRET) as JwtPayload;
     }
