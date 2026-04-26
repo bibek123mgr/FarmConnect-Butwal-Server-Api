@@ -5,7 +5,7 @@ import { asyncHandler } from "../utils/asyncHandler";
 
 class ProductRedisMiddleware {
     static removeProductCache() {
-        return asyncHandler(async (req: AuthRequest, res: Response, next: NextFunction) => {
+        return asyncHandler(async (_req: AuthRequest, _res: Response, next: NextFunction) => {
             const key = `products`;
             await redisClient.del(key);
             next();
@@ -13,7 +13,7 @@ class ProductRedisMiddleware {
         });
     }
     static removeOneProductCache() {
-        return asyncHandler(async (req: AuthRequest, res: Response, next: NextFunction) => {
+        return asyncHandler(async (req: AuthRequest, _res: Response, next: NextFunction) => {
             const key = `products:${req.params.id}`;
             await redisClient.del(key);
             next();
@@ -21,7 +21,7 @@ class ProductRedisMiddleware {
         });
     }
     static getProductFromCache() {
-        return asyncHandler(async (req: AuthRequest, res: Response, next: NextFunction) => {
+        return asyncHandler(async (_req: AuthRequest, res: Response, next: NextFunction) => {
 
             const key = `products`;
             const products = await redisClient.get(key);
