@@ -6,6 +6,8 @@ import { comesFrom, Stock } from "../../models/StockModel";
 import { NotFoundError } from "../../utils/errors";
 import Category from "../../models/CategoryModel";
 import redisClient from "../../redis/redis";
+import { QueryTypes } from "sequelize";
+import ProductPrice from "../../models/ProductPriceModel";
 
 interface CreateProductDTO {
     userId: number;
@@ -64,10 +66,102 @@ class ProductService {
             throw error;
         }
     }
-
     static async getAllProducts() {
         const products = await Product.findAll({
             where: { isActive: true },
+            attributes: [
+                "id",
+                "name",
+                "description",
+                "farmId",
+                "categoryId",
+                [Sequelize.col("farm.farmName"), "farmName"],
+                [Sequelize.col("category.name"), "categoryName"]
+            ],
+            include: [
+                {
+                    model: Farm,
+                    attributes: []
+                },
+                {
+                    model: Category,
+                    attributes: []
+                }
+            ],
+            order: [["createdAt", "DESC"]],
+            raw: true
+        });
+
+        const finalProducts = await Promise.all(
+            products.map(async (product: any) => {
+                const [availableStockResult, prices] = await Promise.all([
+                    sequelize.query(
+                        `
+                SELECT COALESCE(
+                    SUM(
+                        openingStock 
+                        + production
+                        - sales 
+                        + salesReturn 
+                        - damage 
+                        - chalan 
+                        + chalanReturn
+                    ), 0
+                ) as availableStock
+                FROM stock
+                WHERE productId = ?
+                AND isActive = 1
+                `,
+                        {
+                            replacements: [product.id],
+                            type: QueryTypes.SELECT
+                        }
+                    ),
+
+                    ProductPrice.findAll({
+                        where: {
+                            productId: product.id,
+                            isActive: true
+                        },
+                        attributes: ["price", "type"],
+                        raw: true
+                    })
+                ]);
+
+                const originalPrice = prices.find(
+                    (price: any) => price.type === "FIXED"
+                )?.price || 0;
+
+                const discountPrice = prices.find(
+                    (price: any) => price.type === "DISCOUNT"
+                )?.price || 0;
+
+                return {
+                    ...product,
+                    availableStock: (availableStockResult[0] as { availableStock: number })?.availableStock || 0,
+                    originalPrice,
+                    discountPrice
+                };
+            })
+        );
+
+
+        await redisClient.set(
+            "products:stock:all",
+            JSON.stringify(finalProducts),
+            "EX",
+            600
+        );
+        return finalProducts;
+
+    }
+
+    static async getAllMyProducts(userId: number) {
+        const products = await Product.findAll({
+            where: {
+                isActive: true,
+                farmerId: userId
+            },
             attributes: [
                 "id",
                 "name",
@@ -92,14 +186,6 @@ class ProductService {
             order: [["createdAt", "DESC"]],
             raw: true
         });
-
-
-        await redisClient.set(
-            "products:all",
-            JSON.stringify(products),
-            "EX",
-            600
-        );
         return products;
 
     }
@@ -135,14 +221,6 @@ class ProductService {
         if (!product) {
             throw new NotFoundError("Product not found");
         }
-        await redisClient.hset(
-            "products",
-            id,
-            JSON.stringify(product)
-        );
-
-        await redisClient.expire("products", 600);
-
         return product;
     }
 

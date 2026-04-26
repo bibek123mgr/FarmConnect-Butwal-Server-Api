@@ -33,6 +33,16 @@ class ProductController {
         });
     });
 
+    static getAllMyProducts = asyncHandler(async (req: AuthRequest, res: Response) => {
+        const userId=req.user!.id
+        const products = await ProductService.getAllMyProducts(userId);
+
+        return res.status(200).json({
+            status: true,
+            data: products,
+        });
+    });
+
     static getById = asyncHandler(async (req: Request, res: Response) => {
         const id = Number(req.params.id);
 
