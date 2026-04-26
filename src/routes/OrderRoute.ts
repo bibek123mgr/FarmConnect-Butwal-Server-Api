@@ -4,16 +4,50 @@ import { Auth } from "../middlewares/Auth";
 import { validate } from "../utils/validation.middleware";
 import OrderValidation from "../validations/OrderValidation";
 import OrderController from "../controllers/OrderController";
+import OrderRedisMiddleware from "../middlewares/OrderRedisMiddleware";
+
+const orderRedisMiddleware = new OrderRedisMiddleware();
 
 router
     .route("/orders")
-    .post(Auth, validate(OrderValidation.create), OrderController.create)
-    .get(Auth, OrderController.getAll);
+    .post(
+        Auth,
+        validate(OrderValidation.create),
+        orderRedisMiddleware.clearCache(),
+        OrderController.create
+    )
+
+router
+    .route("/orders/my")
+    .get(
+        Auth,
+        orderRedisMiddleware.getAllCachedOrderData(),
+        OrderController.getAll
+    );
+
+router
+    .route("/orders/details/:id")
+    .get(
+        Auth,
+        orderRedisMiddleware.getCachedOrderDataDetails(),
+        OrderController.getOrderDetails
+    );
+
 
 router
     .route("/orders/:id")
-    .get(Auth, OrderController.getById)
-    .put(Auth, validate(OrderValidation.updateStatus), OrderController.updateStatus)
+    .get(
+        Auth,
+        orderRedisMiddleware.getCachedOrderData(),
+        OrderController.getById
+    )
+    .put(
+        Auth,
+        validate(OrderValidation.updateStatus),
+        orderRedisMiddleware.clearCache(),
+        orderRedisMiddleware.clearIndividualCache(),
+        orderRedisMiddleware.clearIndividualCacheDetails(),
+        OrderController.updateStatus)
 
 
 export default router;

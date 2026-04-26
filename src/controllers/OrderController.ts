@@ -47,6 +47,12 @@ class OrderController {
         res.status(200).json({ status: true, data: orders });
     });
 
+     static getOrderDetails = asyncHandler(async (req: AuthRequest, res: Response) => {
+        const id = Number(req.params.id);
+        const orders = await OrderService.getOrderDetails(id);
+        res.status(200).json({ status: true, data: orders });
+    });
+
     static getById = asyncHandler(async (req: Request, res: Response) => {
         const order = await OrderService.getOrderById(Number(req.params.id));
         res.status(200).json(

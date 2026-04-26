@@ -6,6 +6,7 @@ import Order, { OrderStatus } from "../models/OrderModel";
 import Payment, { PaymentMethod, PaymentStatus } from "../models/PaymentModel";
 import Product from "../models/ProductModel";
 import Stock, { comesFrom } from "../models/StockModel";
+import redisClient from "../redis/redis";
 import { NotFoundError } from "../utils/errors";
 import { Sequelize } from "sequelize";
 
@@ -125,6 +126,39 @@ class OrderService {
         }
     }
 
+    static async getOrderDetails(id: number) {
+        const orderItems = await OrderItem.findAll({
+            where: { orderId: id },
+            include: [
+                {
+                    model: Product,
+                    attributes: ["name"]
+                },
+                {
+                    model: Farm,
+                    attributes: ["farmName"]
+                }
+            ]
+        });
+
+        const formattedItems = orderItems.map(item => ({
+            id: item.id,
+            productId: item.productId,
+            quantity: item.quantity,
+            subtotal: item.subtotal,
+            price: item.price,
+            farmId: item.farmId,
+            productName: item.product?.name,
+            farmName: item.farm?.farmName
+        }));
+
+        await redisClient.hset(`order:details`,
+            id.toString(), JSON.stringify(formattedItems));
+
+        await redisClient.expire(`order:details`, 600);
+        return formattedItems;
+    }
+
     static async getAllOrders(userId: number) {
         const orders = await Order.findAll({
             where: { userId },
@@ -137,49 +171,12 @@ class OrderService {
                 "status",
                 "createdAt"
             ],
-            include: [
-                {
-                    model: OrderItem,
-                    as: "items",
-                    attributes: [
-                        "id",
-                        "productId",
-                        "quantity",
-                        "subtotal",
-                        "price",
-                        "farmId"
-                    ],
-                    include: [
-                        {
-                            model: Product,
-                            attributes: ["name"]
-                        },
-                        {
-                            model: Farm,
-                            attributes: ["farmName"]
-                        }
-                    ]
-                }
-            ],
             order: [["createdAt", "DESC"]]
         });
 
-        return orders.map(order => {
-            const o = order.toJSON();
+        await redisClient.set(`user:${userId}:orders`, JSON.stringify(orders));
 
-            o.items = o.items.map((item: any) => ({
-                id: item.id,
-                productId: item.productId,
-                quantity: item.quantity,
-                subtotal: item.subtotal,
-                price: item.price,
-                farmId: item.farmId,
-                productName: item.product?.name,
-                farmName: item.farm?.farmName
-            }));
-
-            return o;
-        });
+        return orders;
     }
 
     static async getOrderById(id: number) {
@@ -192,49 +189,20 @@ class OrderService {
                 "paymentStatus",
                 "status",
                 "createdAt"
-            ],
-            include: [
-                {
-                    model: OrderItem,
-                    as: "items",
-                    attributes: [
-                        "id",
-                        "productId",
-                        "quantity",
-                        "subtotal",
-                        "price",
-                        "farmId"
-                    ],
-                    include: [
-                        {
-                            model: Product,
-                            attributes: ["name"]
-                        },
-                        {
-                            model: Farm,
-                            attributes: ["farmName"]
-                        }
-                    ]
-                }
             ]
         });
 
         if (!order) throw new NotFoundError("Order not found");
 
-        const o = order.toJSON();
+        await redisClient.hset(
+            "orders",
+            id.toString(),
+            JSON.stringify(order)
+        );
 
-        o.items = o.items.map((item: any) => ({
-            id: item.id,
-            productId: item.productId,
-            quantity: item.quantity,
-            subtotal: item.subtotal,
-            price: item.price,
-            farmId: item.farmId,
-            productName: item.product?.name,
-            farmName: item.farm?.farmName
-        }));
+        await redisClient.expire("orders", 600);
 
-        return o;
+        return order;
     }
 
     static async updateOrderStatus(id: number, status: OrderStatus) {
