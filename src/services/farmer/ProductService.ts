@@ -2,9 +2,10 @@ import { Sequelize } from "sequelize-typescript";
 import { sequelize } from "../../config/database";
 import Farm from "../../models/FarmModel";
 import Product from "../../models/ProductModel";
-import { Stock } from "../../models/StockModel";
+import { comesFrom, Stock } from "../../models/StockModel";
 import { NotFoundError } from "../../utils/errors";
 import Category from "../../models/CategoryModel";
+import redisClient from "../../redis/redis";
 
 interface CreateProductDTO {
     userId: number;
@@ -50,6 +51,8 @@ class ProductService {
                     createdBy: data.userId,
                     farmId: data.farmId,
                     isActive: true,
+                    comesFrom: comesFrom.OPENING_STOCK,
+                    tableId: product.id
                 },
                 { transaction: t }
             );
@@ -63,10 +66,10 @@ class ProductService {
     }
 
     static async getAllProducts() {
-        return await Product.findAll({
+        const products = await Product.findAll({
             where: { isActive: true },
             attributes: [
-                "id", 
+                "id",
                 "name",
                 "description",
                 "unit",
@@ -89,13 +92,23 @@ class ProductService {
             order: [["createdAt", "DESC"]],
             raw: true
         });
+
+
+        await redisClient.set(
+            "products:all",
+            JSON.stringify(products),
+            "EX",
+            600
+        );
+        return products;
+
     }
 
     static async getProductById(id: number) {
         const product = await Product.findOne({
-            where: { id: id},
+            where: { id: id },
             attributes: [
-                "id", 
+                "id",
                 "name",
                 "description",
                 "unit",
@@ -122,6 +135,13 @@ class ProductService {
         if (!product) {
             throw new NotFoundError("Product not found");
         }
+        await redisClient.hset(
+            "products",
+            id,
+            JSON.stringify(product)
+        );
+
+        await redisClient.expire("products", 600);
 
         return product;
     }

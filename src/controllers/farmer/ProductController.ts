@@ -1,6 +1,6 @@
 import { Request, Response } from "express";
 import { asyncHandler } from "../../utils/asyncHandler";
-import ProductService from "../../models/ProductModel";
+import ProductService from "../../services/farmer/ProductService";
 import { AuthRequest } from "../../middlewares/Auth";
 
 class ProductController {
