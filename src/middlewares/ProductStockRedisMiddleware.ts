@@ -63,6 +63,18 @@ class ProductStockRedisMiddleware {
             }
         );
     }
+
+    // getProductIdAndClearCacheById() {
+    //     return asyncHandler(
+    //         async (req: Request, res: Response, next: NextFunction) => {
+    //             const key = `products:stock`;
+    //             const id = req.params?.id
+    //             await redisClient.hdel(key, id.toString());
+    //             res.locals.productId = id;
+    //             return next();
+    //         }
+    //     );
+    // }
 }
 
 

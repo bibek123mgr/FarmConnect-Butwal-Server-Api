@@ -3,7 +3,9 @@ import { Auth } from "../middlewares/Auth";
 import { validate } from "../utils/validation.middleware";
 import ProductPriceValidation from "../validations/ProductPriceValidation";
 import ProductPriceController from "../controllers/farmer/ProductPriceController";
+import ProductStockRedisMiddleware from "../middlewares/ProductStockRedisMiddleware";
 
+const productStockRedisMiddleware = new ProductStockRedisMiddleware();
 const router = Router();
 
 router
@@ -11,6 +13,7 @@ router
     .post(
         Auth,
         validate(ProductPriceValidation.createOrUpdate),
+        productStockRedisMiddleware.clearProductStockCache(),
         ProductPriceController.createOrUpdate
     );
 

@@ -5,8 +5,10 @@ import { validate } from "../utils/validation.middleware";
 import OrderValidation from "../validations/OrderValidation";
 import OrderController from "../controllers/OrderController";
 import OrderRedisMiddleware from "../middlewares/OrderRedisMiddleware";
+import ProductStockRedisMiddleware from "../middlewares/ProductStockRedisMiddleware";
 
 const orderRedisMiddleware = new OrderRedisMiddleware();
+const productStockRedisMiddleware = new ProductStockRedisMiddleware();
 
 router
     .route("/orders")
@@ -14,6 +16,7 @@ router
         Auth,
         validate(OrderValidation.create),
         orderRedisMiddleware.clearCache(),
+        productStockRedisMiddleware.clearProductStockCache(),
         OrderController.create
     )
 
@@ -47,6 +50,7 @@ router
         orderRedisMiddleware.clearCache(),
         orderRedisMiddleware.clearIndividualCache(),
         orderRedisMiddleware.clearIndividualCacheDetails(),
+        productStockRedisMiddleware.clearProductStockCache(),
         OrderController.updateStatus)
 
 
