@@ -1,23 +1,12 @@
 import { BelongsTo, Column, DataType, Default, ForeignKey, Model, Table } from "sequelize-typescript";
 import Product from "./ProductModel";
 import User from "./UserModel";
-import Farm from "./FarmModel";
 
-export enum comesFrom {
-    OPENING_STOCK = "opening_stock",
-    PRODUCTION = "production",
-    SALES = "sales",
-    SALES_RETURN = "sales_return",
-    DAMAGE = "damage",
-    CHALAN = "chalan",
-    CHALAN_RETURN = "chalan_return",
-    RESERVE = "reserve"
-}
 @Table({
-    tableName: "stock",
+    tableName: "actual_stock",
     timestamps: true,
 })
-export class Stock extends Model {
+export class ActualStock extends Model {
     @Column({
         primaryKey: true,
         autoIncrement: true,
@@ -79,19 +68,6 @@ export class Stock extends Model {
     })
     declare reserveQuantity: number;
 
-    @Column({
-        type: DataType.DECIMAL(10, 2),
-        defaultValue: 0,
-    })
-    declare rate: number;
-
-    @Column({
-        type: DataType.DECIMAL(10, 2),
-        defaultValue: 0,
-    })
-    declare amount: number;
-
-
     @ForeignKey(() => User)
     @Column({
         type: DataType.INTEGER,
@@ -102,32 +78,12 @@ export class Stock extends Model {
     @BelongsTo(() => User)
     user!: User;
 
-    @ForeignKey(() => Farm)
-    @Column({
-        type: DataType.INTEGER,
-        allowNull: false,
-    })
-    declare farmId: number;
-
-
     @Default(true)
     @Column({
         type: DataType.BOOLEAN,
     })
     declare isActive: boolean;
 
-    @Column({
-        type: DataType.INTEGER,
-        allowNull: false,
-    })
-    declare tableId: number;
-
-    @Column({
-        type: DataType.ENUM(...Object.values(comesFrom)),
-        allowNull: false,
-    })
-    declare comesFrom: comesFrom;
-
 }
 
-export default Stock;
+export default ActualStock;

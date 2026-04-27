@@ -8,6 +8,7 @@ import Category from "../../models/CategoryModel";
 import redisClient from "../../redis/redis";
 import { QueryTypes } from "sequelize";
 import ProductPrice from "../../models/ProductPriceModel";
+import ActualStock from "../../models/ActualStockMode";
 
 interface CreateProductDTO {
     userId: number;
@@ -35,6 +36,22 @@ class ProductService {
                     isActive: true,
                     categoryId: data.categoryId,
                     farmId: data.farmId
+                },
+                { transaction: t }
+            );
+
+            await ActualStock.create(
+                {
+                    productId: product.id,
+                    openingStock: data.quantity || 0,
+                    sales: 0,
+                    salesReturn: 0,
+                    damage: 0,
+                    chalan: 0,
+                    chalanReturn: 0,
+                    reserveQuantity: 0,
+                    createdBy: data.userId,
+                    isActive: true
                 },
                 { transaction: t }
             );
@@ -108,7 +125,7 @@ class ProductService {
                         + chalanReturn
                     ), 0
                 ) as availableStock
-                FROM stock
+                FROM actual_stock
                 WHERE productId = ?
                 AND isActive = 1
                 `,
@@ -225,22 +242,49 @@ class ProductService {
     }
 
     static async updateProduct(id: number, data: Partial<CreateProductDTO>) {
-        const product = await Product.findByPk(id);
+        const transcation = await sequelize.transaction();
+        try {
+            const product = await Product.findByPk(id);
 
-        if (!product) {
-            throw new NotFoundError("Product not found");
+            if (!product) {
+                throw new NotFoundError("Product not found");
+            }
+
+            await product.update({
+                name: data.name ?? product.name,
+                description: data.description ?? product.description,
+                unit: data.unit ?? product.unit,
+                quantity: data.quantity ?? product.quantity,
+                rate: data.rate ?? product.rate,
+                categoryId: data.categoryId ?? product.categoryId
+            });
+
+            await ActualStock.update(
+                {
+                    openingStock: data.quantity ?? product.quantity
+                },
+                {
+                    where: { productId: id },
+                }
+            );
+
+            await Stock.update(
+                {
+                    rate: data.rate ?? product.rate,
+                    amount: ((data.quantity ?? product.quantity) * (data.rate ?? product.rate)),
+                    openingStock: data.quantity ?? product.quantity
+                },
+                {
+                    where: { productId: id },
+                }
+            );
+
+            await transcation.commit();
+            return product;
+        } catch (error) {
+            await transcation.rollback();
+            throw error;
         }
-
-        await product.update({
-            name: data.name ?? product.name,
-            description: data.description ?? product.description,
-            unit: data.unit ?? product.unit,
-            quantity: data.quantity ?? product.quantity,
-            rate: data.rate ?? product.rate,
-            categoryId: data.categoryId ?? product.categoryId
-        });
-
-        return product;
     }
 
     static async deleteProduct(id: number) {
@@ -256,6 +300,14 @@ class ProductService {
             await product.update(
                 { isActive: false },
                 { transaction: t }
+            );
+
+            await ActualStock.update(
+                { isActive: false },
+                {
+                    where: { productId: id },
+                    transaction: t,
+                }
             );
 
             await Stock.update(

@@ -5,6 +5,7 @@ import Production from "../../models/ProductionModel";
 import Product from "../../models/ProductModel";
 import Stock, { comesFrom } from "../../models/StockModel";
 import { NotFoundError } from "../../utils/errors";
+import ActualStock from "../../models/ActualStockMode";
 
 interface CreateProductionDTO {
     productId: number;
@@ -35,6 +36,19 @@ class ProductionService {
                 costPerUnit: data.costPerUnit,
                 remarks: data.remarks
             }, { transaction: t });
+
+            await ActualStock.increment(
+                {
+                    production: data.quantity
+                },
+                {
+                    where: {
+                        productId: data.productId,
+                        farmId: data.farmId
+                    },
+                    transaction: t
+                }
+            );
 
             // Stock increase (production means incoming stock)
             await Stock.create({
@@ -80,6 +94,19 @@ class ProductionService {
                 costPerUnit: newCost,
                 remarks: data.remarks
             }, { transaction: t });
+
+            await ActualStock.increment(
+                {
+                    production: newQuantity - production.quantity
+                },
+                {
+                    where: {
+                        productId: data.productId,
+                        farmId: data.farmId
+                    },
+                    transaction: t
+                }
+            );
 
             const stock = await Stock.findOne({
                 where: {
@@ -159,6 +186,18 @@ class ProductionService {
         if (!production) throw new NotFoundError("Production not found");
 
         await production.update({ isActive: false });
+
+        await ActualStock.increment(
+            {
+                production: 0 - production.quantity
+            },
+            {
+                where: {
+                    productId: production.productId,
+                    farmId: production.farmId
+                }
+            }
+        );
         await Stock.update({ isActive: false }, { where: { tableId: id, comesFrom: comesFrom.PRODUCTION } });
     }
 }

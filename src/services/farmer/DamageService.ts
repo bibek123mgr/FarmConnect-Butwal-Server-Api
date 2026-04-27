@@ -1,4 +1,5 @@
 import sequelize from "../../config/database";
+import ActualStock from "../../models/ActualStockMode";
 import Damage from "../../models/DamageModel";
 import Farm from "../../models/FarmModel";
 import Product from "../../models/ProductModel";
@@ -37,6 +38,19 @@ class DamageService {
                 remarks: data.remarks
             }, { transaction: t });
 
+            await ActualStock.increment(
+                {
+                    damage: data.quantity
+                },
+                {
+                    where: {
+                        productId: data.productId,
+                        farmId: data.farmId
+                    },
+                    transaction: t
+                }
+            );
+
             // Stock reduction (damage means loss)
             await Stock.create({
                 productId: data.productId,
@@ -47,6 +61,7 @@ class DamageService {
                 chalan: 0,
                 chalanReturn: 0,
                 rate: 0,
+                reserveQuantity: 0,
                 amount: data.lossAmount || 0,
                 farmId: data.farmId,
                 createdBy: data.userId,
@@ -74,6 +89,7 @@ class DamageService {
             const lossAmount = data.lossAmount || 0;
             const newCost = lossAmount
                 / newQuantity;
+            const differenceQty = newQuantity - damage.quantity;
 
             await damage.update({
                 productId: data.productId,
@@ -84,6 +100,18 @@ class DamageService {
                 remarks: data.remarks
             }, { transaction: t });
 
+            await ActualStock.increment(
+                {
+                    damage: differenceQty
+                },
+                {
+                    where: {
+                        productId: data.productId,
+                        farmId: data.farmId
+                    },
+                    transaction: t
+                }
+            );
             const stock = await Stock.findOne({
                 where: {
                     tableId: id,
@@ -158,12 +186,32 @@ class DamageService {
     }
 
     static async deleteDamage(id: number) {
-        const damage = await Damage.findByPk(id);
-        if (!damage) throw new NotFoundError("Damage record not found");
+        const t = await sequelize.transaction();
+        try {
+            const damage = await Damage.findByPk(id);
+            if (!damage) throw new NotFoundError("Damage record not found");
 
-        await damage.update({ isActive: false });
-        await Stock.update({ isActive: false }, { where: { tableId: id, comesFrom: comesFrom.DAMAGE } });
-        return true;
+            await damage.update({ isActive: false });
+            await ActualStock.update(
+                {
+                    damage: sequelize.literal(`damage - ${damage.quantity}`)
+                },
+                {
+                    where: {
+                        productId: damage.productId,
+                    },
+                    transaction: t
+                }
+            );
+            await Stock.update({ isActive: false }, { where: { tableId: id, comesFrom: comesFrom.DAMAGE } });
+
+            await t.commit();
+            return true;
+        } catch (error) {
+
+            await t.rollback();
+            throw error;
+        }
     }
 }
 
