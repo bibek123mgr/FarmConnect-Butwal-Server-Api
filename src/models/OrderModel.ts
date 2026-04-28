@@ -44,6 +44,12 @@ export class Order extends Model {
 
     @Column({
         type: DataType.STRING,
+        allowNull: true,
+    })
+    declare gatewayReferenceId: string;
+
+    @Column({
+        type: DataType.STRING,
         allowNull: false
     })
 

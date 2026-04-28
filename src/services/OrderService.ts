@@ -24,9 +24,17 @@ interface CreateOrderDTO {
     address: string
 }
 
+export interface OrderRseponseType {
+    totalAmount: number;
+    farmerIds: Array<number>;
+    orderId: number;
+    userId: number;
+    success: boolean
+}
+
 class OrderService {
 
-    static async createOrder(data: CreateOrderDTO) {
+    static async createOrder(data: CreateOrderDTO): Promise<OrderRseponseType> {
         const t = await sequelize.transaction();
 
         try {
@@ -44,7 +52,9 @@ class OrderService {
                 status: OrderStatus.PENDING,
                 paymentStatus: PaymentStatus.PENDING,
                 paymentMethod: data.paymentMethod,
-                address: data.address
+                address: data.address,
+                gatewayReferenceId: ""
+
             }, { transaction: t });
 
             if (data.paymentMethod === PaymentMethod.COD) {
@@ -113,6 +123,29 @@ class OrderService {
                     userId: data.customerId,
                 }, { transaction: t });
 
+                for (const farmer of farmerIds) {
+                    await Notification.create({
+                        userId: farmer,
+                        title: "New Order",
+                        message: `You received a new order #${order.id}`,
+                        type: "ORDER",
+                        meta: {
+                            orderId: order.id
+                        }
+                    }, { transaction: t });
+
+                }
+
+                await Notification.create({
+                    userId: data.customerId,
+                    title: "Order Placed",
+                    message: `Your order #${order.id} has been placed successfully`,
+                    type: "ORDER",
+                    meta: {
+                        orderId: order.id
+                    }
+                }, { transaction: t });
+
             } else {
 
                 for (const item of data.items) {
@@ -120,8 +153,6 @@ class OrderService {
                     const product = await Product.findByPk(item.productId, { transaction: t });
 
                     if (!product) { throw new NotFoundError("Product not found"); }
-
-                    farmerIds.add(product.farmerId);
 
                     const price = Number(item.rate);
                     const quantity = Number(item.quantity);
@@ -182,34 +213,12 @@ class OrderService {
                 }, { transaction: t });
 
             }
-
-            for (const farmer of farmerIds) {
-                await Notification.create({
-                    userId: farmer,
-                    title: "New Order",
-                    message: `You received a new order #${order.id}`,
-                    type: "ORDER",
-                    meta: {
-                        orderId: order.id
-                    }
-                }, { transaction: t });
-
-            }
-
-            await Notification.create({
-                userId: data.customerId,
-                title: "Order Placed",
-                message: `Your order #${order.id} has been placed successfully`,
-                type: "ORDER",
-                meta: {
-                    orderId: order.id
-                }
-            }, { transaction: t });
             await t.commit();
             return {
                 farmerIds: Array.from(farmerIds),
                 orderId: order.id,
                 userId: data.customerId,
+                totalAmount,
                 success: true
             };
 
@@ -217,6 +226,118 @@ class OrderService {
             await t.rollback();
             throw error;
         }
+    }
+
+    static async updateOrderAfterPaymentSuccess(gatewayReferenceId: string, paymentStatus: PaymentStatus): Promise<OrderRseponseType> {
+        const transaction = await sequelize.transaction();
+        try {
+            const [order, payment] = await Promise.all([
+                await Order.findOne({
+                    where: { gatewayReferenceId: gatewayReferenceId },
+                    transaction
+                }),
+                await Payment.findOne({
+                    where: { gatewayReferenceId: gatewayReferenceId },
+                    transaction
+                })
+            ])
+
+            if (!order) throw new NotFoundError("Order not found");
+            if (!payment) throw new NotFoundError("Payment not found");
+
+            const orderItems = await OrderItem.findAll({
+                where: { orderId: order.id },
+                transaction
+            })
+
+            order.status = OrderStatus.CONFIRMED;
+            payment.status = PaymentStatus.PAID;
+
+            const farmerIds = new Set<number>();
+
+            await Promise.all([
+                order.save({ transaction }),
+                payment.save({ transaction }),
+                orderItems.forEach(async (item) => {
+                    let sales = 0
+                    if (paymentStatus === PaymentStatus.PAID) {
+                        sales = item.quantity
+                    }
+                    const product = await Product.findByPk(item.productId, { transaction });
+                    if (!product) { throw new NotFoundError("Product not found"); }
+
+                    farmerIds.add(product.farmerId);
+
+                    await ActualStock.increment(
+                        {
+                            reserveQuantity: 0 - item.quantity,
+                            sales: sales
+                        },
+                        {
+                            where: {
+                                productId: item.productId
+                            },
+                            transaction
+                        }
+                    );
+                    if (sales > 0) {
+                        await Stock.create({
+                            productId: item.productId,
+                            openingStock: 0,
+                            sales: item.quantity,
+                            salesReturn: 0,
+                            damage: 0,
+                            chalan: 0,
+                            chalanReturn: 0,
+                            rate: item.price,
+                            amount: item.subtotal,
+                            farmId: item.farmId,
+                            createdBy: order.userId,
+                            tableId: order.id,
+                            comesFrom: comesFrom.SALES,
+                            reserveQuantity: 0
+                        }, { transaction });
+
+                        for (const farmer of farmerIds) {
+                            await Notification.create({
+                                userId: farmer,
+                                title: "New Order",
+                                message: `You received a new order #${order.id}`,
+                                type: "ORDER",
+                                meta: {
+                                    orderId: order.id
+                                }
+                            }, { transaction });
+
+                        }
+
+                        await Notification.create({
+                            userId: order.userId,
+                            title: "Order Placed",
+                            message: `Your order #${order.id} has been placed successfully`,
+                            type: "ORDER",
+                            meta: {
+                                orderId: order.id
+                            }
+                        }, { transaction });
+                    }
+
+
+                })
+            ]);
+            await transaction.commit();
+            return {
+                farmerIds: Array.from(farmerIds),
+                orderId: order.id,
+                totalAmount: order.totalAmount,
+                userId: order.userId,
+                success: true
+            }
+        } catch (error) {
+            await transaction.rollback();
+            throw error;
+        }
+
     }
 
     static async getOrderDetails(id: number) {
@@ -296,6 +417,29 @@ class OrderService {
         await redisClient.expire("orders", 600);
 
         return order;
+    }
+
+    static async updateGateWayReference(id: number, referenceId: string) {
+        const order = await Order.findByPk(id);
+        if (!order) throw new NotFoundError("Order not found");
+        const t = await sequelize.transaction();
+        try {
+            await order.update({ gatewayReferenceId: referenceId }, { transaction: t });
+            await Payment.update(
+                {
+                    gatewayReferenceId: referenceId
+                }, {
+                where: {
+                    orderId: id
+                },
+                transaction: t
+            }
+            )
+            await t.commit();
+        } catch (e) {
+            await t.rollback();
+            throw e;
+        }
     }
 
     static async updateOrderStatus(id: number, status: OrderStatus) {

@@ -16,7 +16,7 @@ class AvailableStockHelper {
                     + chalanReturn
                     - reserveQuantity
                 ), 0) AS availableStock
-             FROM actual_stocks
+             FROM actual_stock
              WHERE productId = ?
              AND isActive = 1`,
             {

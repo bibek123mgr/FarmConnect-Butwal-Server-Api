@@ -45,6 +45,12 @@ export class Payment extends Model {
     })
     declare orderId: number;
 
+    @Column({
+        type: DataType.STRING,
+        allowNull: true,
+    })
+    declare gatewayReferenceId: string;
+
     @BelongsTo(() => Order)
     order!: Order;
 

@@ -11,13 +11,12 @@ export interface IEsewaInitializeResponse {
     transaction_uuid: string;
 }
 
+
 class Payment {
-    public static async inititeEsewaPayment(data: IPaymentData): Promise<IEsewaInitializeResponse> {
-        const amount = 100;
+    public static async inititeEsewaPayment(amount: number): Promise<IEsewaInitializeResponse> {
+
         const transaction_uuid = EsewaCredentialsHelper.generateUniqueId();
-
         const message = `total_amount=${amount},transaction_uuid=${transaction_uuid},product_code=${config.ESEWA_MERCHENT_ID}`;
-
         const signature = EsewaCredentialsHelper.generateHash(
             config.ESEWA_SECRET_KEY as string,
             message
@@ -50,15 +49,14 @@ class Payment {
         </body>
         </html>
         `;
-        console.log("formHtml", transaction_uuid);
         return { transaction_uuid, formHtml };
     }
 
-    public static async verifyEsewaPayment(transaction_uuid: string) {
+    public static async verifyEsewaPayment(transaction_uuid: string, amount: number) {
         try {
             const payload = {
-                transaction_uuid: 'id-1776334867786-5nnc7kf1b',
-                total_amount: 100,
+                transaction_uuid: transaction_uuid,
+                total_amount: amount,
                 product_code: config.ESEWA_MERCHENT_ID
             }
             const response = await axios.get(
@@ -67,11 +65,8 @@ class Payment {
                     params: payload,
                 }
             );
-            console.log("response", response.data);
-            return {
-                success: true,
-                data: response.data,
-            };
+
+            return response.data?.status === "SUCCESS";
         } catch (error: any) {
             console.error("eSewa Error:", error?.response?.data || error.message);
             throw new Error(
@@ -80,21 +75,20 @@ class Payment {
         }
     }
 
-    public static async inititeKhaltiPayment(data: IPaymentData) {
-        const amount = 100 * 100;
+    public static async inititeKhaltiPayment(amount: number) {
         const purchase_order_id =
             EsewaCredentialsHelper.generateUniqueId();
         const payload = {
-            "amount": amount,
+            "amount": amount * 100,
             "return_url": config.PAYMENT_SUCCESS_URL,
             "website_url": config.FRONTEND_URL,
             "purchase_order_id": purchase_order_id,
             "purchase_order_name": "test",
-            "customer_info": {
-                "name": "Ram Bahadur",
-                "email": "test@khalti.com",
-                "phone": "9800000001"
-            }
+            // "customer_info": {
+            //     "name": "Ram Bahadur",
+            //     "email": "test@khalti.com",
+            //     "phone": "9800000001"
+            // }
         };
 
         try {
@@ -108,8 +102,6 @@ class Payment {
                     },
                 }
             );
-
-            console.log("response", response.data);
 
             return {
                 success: true,
@@ -127,10 +119,10 @@ class Payment {
         }
     }
 
-    public static async verifyKhaltiPayment(pidx: string) {
+    public static async verifyKhaltiPayment(pidx: string): Promise<Boolean> {
         try {
             const payload = {
-                "pidx": "YZwkAxPGmeiW233quZfFBB"
+                "pidx": pidx
             }
             const response = await axios.post(
                 config.KHALTI_PAYMENT_STATUS_CHECK_URL as string,
@@ -142,12 +134,8 @@ class Payment {
                     },
                 }
             );
-            console.log("response", response.data);
+            return response.data?.status == "Completed";
 
-            return {
-                success: true,
-                data: response.data,
-            };
         } catch (error: any) {
             console.error("Khalti Error:", error?.response?.data || error.message);
             throw new Error(
