@@ -233,12 +233,10 @@ class OrderService {
         try {
             const [order, payment] = await Promise.all([
                 await Order.findOne({
-                    where: { gatewayReferenceId: gatewayReferenceId },
-                    transaction
+                    where: { gatewayReferenceId: gatewayReferenceId }
                 }),
                 await Payment.findOne({
-                    where: { gatewayReferenceId: gatewayReferenceId },
-                    transaction
+                    where: { gatewayReferenceId: gatewayReferenceId }
                 })
             ])
 
@@ -258,20 +256,28 @@ class OrderService {
             await Promise.all([
                 order.save({ transaction }),
                 payment.save({ transaction }),
-                orderItems.forEach(async (item) => {
-                    let sales = 0
+
+                ...orderItems.map(async (item) => {
+                    let sales = 0;
+
                     if (paymentStatus === PaymentStatus.PAID) {
-                        sales = item.quantity
+                        sales = item.quantity;
                     }
-                    const product = await Product.findByPk(item.productId, { transaction });
-                    if (!product) { throw new NotFoundError("Product not found"); }
+
+                    const product = await Product.findByPk(item.productId, {
+                        transaction
+                    });
+
+                    if (!product) {
+                        throw new NotFoundError("Product not found");
+                    }
 
                     farmerIds.add(product.farmerId);
 
                     await ActualStock.increment(
                         {
-                            reserveQuantity: 0 - item.quantity,
-                            sales: sales
+                            reserveQuantity: -item.quantity,
+                            sales
                         },
                         {
                             where: {
@@ -280,51 +286,57 @@ class OrderService {
                             transaction
                         }
                     );
+
                     if (sales > 0) {
-                        await Stock.create({
-                            productId: item.productId,
-                            openingStock: 0,
-                            sales: item.quantity,
-                            salesReturn: 0,
-                            damage: 0,
-                            chalan: 0,
-                            chalanReturn: 0,
-                            rate: item.price,
-                            amount: item.subtotal,
-                            farmId: item.farmId,
-                            createdBy: order.userId,
-                            tableId: order.id,
-                            comesFrom: comesFrom.SALES,
-                            reserveQuantity: 0
-                        }, { transaction });
-
-                        for (const farmer of farmerIds) {
-                            await Notification.create({
-                                userId: farmer,
-                                title: "New Order",
-                                message: `You received a new order #${order.id}`,
-                                type: "ORDER",
-                                meta: {
-                                    orderId: order.id
-                                }
-                            }, { transaction });
-
-                        }
-
-                        await Notification.create({
-                            userId: order.userId,
-                            title: "Order Placed",
-                            message: `Your order #${order.id} has been placed successfully`,
-                            type: "ORDER",
-                            meta: {
-                                orderId: order.id
-                            }
-                        }, { transaction });
+                        await Stock.create(
+                            {
+                                productId: item.productId,
+                                openingStock: 0,
+                                sales: item.quantity,
+                                salesReturn: 0,
+                                damage: 0,
+                                chalan: 0,
+                                chalanReturn: 0,
+                                rate: item.price,
+                                amount: item.subtotal,
+                                farmId: item.farmId,
+                                createdBy: order.userId,
+                                tableId: order.id,
+                                comesFrom: comesFrom.SALES,
+                                reserveQuantity: 0
+                            },
+                            { transaction }
+                        );
                     }
-
-
                 })
             ]);
+            for (const farmerId of farmerIds) {
+                await Notification.create(
+                    {
+                        userId: farmerId,
+                        title: "New Order",
+                        message: `You received a new order #${order.id}`,
+                        type: "ORDER",
+                        meta: {
+                            orderId: order.id
+                        }
+                    },
+                    { transaction }
+                );
+            }
+
+            await Notification.create(
+                {
+                    userId: order.userId,
+                    title: "Order Placed",
+                    message: `Your order #${order.id} has been placed successfully`,
+                    type: "ORDER",
+                    meta: {
+                        orderId: order.id
+                    }
+                },
+                { transaction }
+            );
             await transaction.commit();
             return {
                 farmerIds: Array.from(farmerIds),

@@ -29,6 +29,16 @@ router
     );
 
 router
+    .route("/orders/verify-payment")
+    .post(
+        Auth,
+        validate(OrderValidation.verifyPayment),
+        productStockRedisMiddleware.clearProductStockCache(),
+        OrderController.verifyPayment
+    );
+
+
+router
     .route("/orders/details/:id")
     .get(
         Auth,

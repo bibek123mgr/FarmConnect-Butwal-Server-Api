@@ -82,6 +82,19 @@ class OrderValidation {
         fromDate: Joi.date().optional(),
         toDate: Joi.date().optional(),
     });
+
+    public static verifyPayment = Joi.object({
+        gatewayReferenceId: BaseValidation.getString("Gateway reference id is required"),
+
+        paymentMethod: Joi.string()
+            .valid("esewa", "khalti")
+            .required()
+            .messages({
+                "any.only": "Invalid payment method",
+                "any.required": "Payment method is required",
+            }),
+        amount: BaseValidation.getPositiveNumber("Amount must be greater than 0"),
+    });
 }
 
 export default OrderValidation;

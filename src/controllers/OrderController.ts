@@ -69,7 +69,7 @@ class OrderController {
         }
     });
 
-    static verifyKhaltiPayment = asyncHandler(async (req: Request, res: Response) => {
+    static verifyPayment = asyncHandler(async (req: Request, res: Response) => {
         const gatewayReferenceId = req.body.gatewayReferenceId;
         const paymentMethod = req.body.paymentMethod;
         const amount = req.body.amount;
