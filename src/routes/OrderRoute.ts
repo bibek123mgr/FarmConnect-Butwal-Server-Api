@@ -37,7 +37,6 @@ router
         OrderController.verifyPayment
     );
 
-
 router
     .route("/orders/details/:id")
     .get(

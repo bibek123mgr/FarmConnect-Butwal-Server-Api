@@ -4,7 +4,6 @@ import ProductRoute from "./ProductRoute";
 import ProductCategoryRoute from "./ProductCategoryRoute";
 import OrderRoute from "./OrderRoute";
 import CartRoute from "./CartRoute";
-import PaymentRoute from "./PaymentRoute";
 import DamageRoute from './DamageRoute';
 import ProductionRoute from './ProductionRoute'
 import ProductPriceRoute from "./ProductPriceRoute";
@@ -16,7 +15,6 @@ export {
     ProductCategoryRoute,
     OrderRoute,
     CartRoute,
-    PaymentRoute,
     DamageRoute,
     ProductionRoute,
     ProductPriceRoute
