@@ -3,7 +3,7 @@ import { QueryTypes } from "sequelize";
 
 class AvailableStockHelper {
 
-    public static async getAvailableStock(productId: number, farmId: number) {
+    public static async getAvailableStock(productId: number) {
 
         const result: any[] = await sequelize.query(
             `SELECT 
@@ -14,13 +14,13 @@ class AvailableStockHelper {
                     - damage
                     - chalan
                     + chalanReturn
+                    - reserveQuantity
                 ), 0) AS availableStock
-             FROM stocks
+             FROM actual_stocks
              WHERE productId = ?
-             AND farmId = ?
              AND isActive = 1`,
             {
-                replacements: [productId, farmId],
+                replacements: [productId],
                 type: QueryTypes.SELECT
             }
         );

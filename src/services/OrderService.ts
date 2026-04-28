@@ -1,4 +1,6 @@
 import sequelize from "../config/database";
+import AvailableStockHelper from "../helper/AvaliableStockHelper";
+import ActualStock from "../models/ActualStockMode";
 import Farm from "../models/FarmModel";
 import Notification from "../models/NotificationModel";
 import OrderItem from "../models/OrderItemModel";
@@ -34,6 +36,8 @@ class OrderService {
                 const subtotal = price * quantity;
                 return total + subtotal;
             }, 0);
+
+            const farmerIds = new Set<number>();
             const order = await Order.create({
                 userId: data.customerId,
                 totalAmount: totalAmount,
@@ -43,52 +47,141 @@ class OrderService {
                 address: data.address
             }, { transaction: t });
 
-            let farmerIds = new Set<number>();
-            for (const item of data.items) {
+            if (data.paymentMethod === PaymentMethod.COD) {
 
-                const product = await Product.findByPk(item.productId, { transaction: t });
+                for (const item of data.items) {
 
-                if (!product) { throw new NotFoundError("Product not found"); }
+                    const product = await Product.findByPk(item.productId, { transaction: t });
+                    if (!product) { throw new NotFoundError("Product not found"); }
 
-                farmerIds.add(product.farmerId);
+                    farmerIds.add(product.farmerId);
 
-                const price = Number(item.rate);
-                const quantity = Number(item.quantity);
-                const subtotal = price * quantity;
+                    const price = Number(item.rate);
+                    const quantity = Number(item.quantity);
+                    const subtotal = price * quantity;
 
-                await OrderItem.create({
+                    await OrderItem.create({
+                        orderId: order.id,
+                        productId: item.productId,
+                        price,
+                        quantity,
+                        subtotal,
+                        farmId: item.farmId,
+                        userId: data.customerId
+                    }, { transaction: t });
+
+                    const availableStock = await AvailableStockHelper.getAvailableStock(item.productId);
+
+                    if (availableStock < quantity) {
+                        t.rollback();
+                        throw new Error("Insufficient stock");
+                    }
+                    await ActualStock.increment(
+                        {
+                            sales: quantity
+                        },
+                        {
+                            where: {
+                                productId: item.productId
+                            },
+                            transaction: t
+                        }
+                    );
+
+                    await Stock.create({
+                        productId: item.productId,
+                        openingStock: 0,
+                        sales: quantity,
+                        salesReturn: 0,
+                        damage: 0,
+                        chalan: 0,
+                        chalanReturn: 0,
+                        rate: price,
+                        amount: subtotal,
+                        farmId: item.farmId,
+                        createdBy: data.customerId,
+                        tableId: order.id,
+                        comesFrom: comesFrom.SALES,
+                        reserveQuantity: 0
+                    }, { transaction: t });
+                }
+                await Payment.create({
                     orderId: order.id,
-                    productId: item.productId,
-                    price,
-                    quantity,
-                    subtotal,
-                    farmId: item.farmId,
-                    userId: data.customerId
+                    amount: totalAmount,
+                    paymentMethod: data.paymentMethod,
+                    status: PaymentStatus.PENDING,
+                    userId: data.customerId,
                 }, { transaction: t });
 
-                await Stock.create({
-                    productId: item.productId,
-                    openingStock: 0,
-                    sales: quantity,
-                    salesReturn: 0,
-                    damage: 0,
-                    chalan: 0,
-                    chalanReturn: 0,
-                    rate: price,
-                    amount: subtotal,
-                    farmId: item.farmId,
-                    createdBy: data.customerId,
-                    tableId: order.id,
-                    comesFrom: comesFrom.SALES
+            } else {
+
+                for (const item of data.items) {
+
+                    const product = await Product.findByPk(item.productId, { transaction: t });
+
+                    if (!product) { throw new NotFoundError("Product not found"); }
+
+                    farmerIds.add(product.farmerId);
+
+                    const price = Number(item.rate);
+                    const quantity = Number(item.quantity);
+                    const subtotal = price * quantity;
+
+                    await OrderItem.create({
+                        orderId: order.id,
+                        productId: item.productId,
+                        price,
+                        quantity,
+                        subtotal,
+                        farmId: item.farmId,
+                        userId: data.customerId
+                    }, { transaction: t });
+
+                    const availableStock = await AvailableStockHelper.getAvailableStock(item.productId);
+
+                    if (availableStock < quantity) {
+                        t.rollback();
+                        throw new Error("Insufficient stock");
+                    }
+
+                    await ActualStock.increment(
+                        {
+                            reserveQuantity: quantity
+                        },
+                        {
+                            where: {
+                                productId: item.productId
+                            },
+                            transaction: t
+                        }
+                    );
+
+                    await Stock.create({
+                        productId: item.productId,
+                        openingStock: 0,
+                        sales: 0,
+                        salesReturn: 0,
+                        damage: 0,
+                        chalan: 0,
+                        chalanReturn: 0,
+                        rate: price,
+                        amount: subtotal,
+                        farmId: item.farmId,
+                        createdBy: data.customerId,
+                        tableId: order.id,
+                        comesFrom: comesFrom.RESERVE,
+                        reserveQuantity: quantity
+                    }, { transaction: t });
+                }
+                await Payment.create({
+                    orderId: order.id,
+                    amount: totalAmount,
+                    paymentMethod: data.paymentMethod,
+                    status: PaymentStatus.PENDING,
+                    userId: data.customerId,
                 }, { transaction: t });
+
             }
-            await Payment.create({
-                orderId: order.id,
-                amount: totalAmount,
-                paymentMethod: data.paymentMethod,
-                status: PaymentStatus.PENDING,
-                userId: data.customerId,
-            }, { transaction: t });
 
             for (const farmer of farmerIds) {
                 await Notification.create({

@@ -84,92 +84,39 @@ class ProductService {
         }
     }
     static async getAllProducts() {
-        const products = await Product.findAll({
-            where: { isActive: true },
-            attributes: [
-                "id",
-                "name",
-                "description",
-                "farmId",
-                "categoryId",
-                [Sequelize.col("farm.farmName"), "farmName"],
-                [Sequelize.col("category.name"), "categoryName"]
-            ],
-            include: [
-                {
-                    model: Farm,
-                    attributes: []
-                },
-                {
-                    model: Category,
-                    attributes: []
-                }
-            ],
-            order: [["createdAt", "DESC"]],
-            raw: true
-        });
+       
+        const [products] = await sequelize.query(`
+        SELECT 
+            p.id, 
+            p.name, 
+            p.description, 
+            p.unit, 
+            pp.price as rate, 
+            p.farmId, 
+            p.categoryId, 
+            f.farmName, 
+            c.name as categoryName,
+        COALESCE(SUM(a.openingStock + a.production - a.sales + a.salesReturn - a.damage - a.chalan + a.chalanReturn - a.reserveQuantity), 0) AS quantity
+        FROM products p 
+        INNER JOIN actual_stock as a ON p.id = a.productId
+        INNER JOIN farms f ON p.farmId = f.id
+        INNER JOIN categories c ON p.categoryId = c.id
+        LEFT JOIN product_prices pp ON p.id = pp.productId
+        AND p.isActive = 1;`,
+            {
+                type: QueryTypes.SELECT
+        })
 
-        const finalProducts = await Promise.all(
-            products.map(async (product: any) => {
-                const [availableStockResult, prices] = await Promise.all([
-                    sequelize.query(
-                        `
-                SELECT COALESCE(
-                    SUM(
-                        openingStock 
-                        + production
-                        - sales 
-                        + salesReturn 
-                        - damage 
-                        - chalan 
-                        + chalanReturn
-                    ), 0
-                ) as availableStock
-                FROM actual_stock
-                WHERE productId = ?
-                AND isActive = 1
-                `,
-                        {
-                            replacements: [product.id],
-                            type: QueryTypes.SELECT
-                        }
-                    ),
+        console.log(products)
 
-                    ProductPrice.findAll({
-                        where: {
-                            productId: product.id,
-                            isActive: true
-                        },
-                        attributes: ["price", "type"],
-                        raw: true
-                    })
-                ]);
-
-                const originalPrice = prices.find(
-                    (price: any) => price.type === "FIXED"
-                )?.price || 0;
-
-                const discountPrice = prices.find(
-                    (price: any) => price.type === "DISCOUNT"
-                )?.price || 0;
-
-                return {
-                    ...product,
-                    availableStock: (availableStockResult[0] as { availableStock: number })?.availableStock || 0,
-                    originalPrice,
-                    discountPrice
-                };
-            })
-        );
-
-
-        await redisClient.set(
+         await redisClient.set(
             "products:stock:all",
-            JSON.stringify(finalProducts),
+            JSON.stringify(products),
             "EX",
             600
         );
-        return finalProducts;
+
+        return products
 
     }
 
