@@ -8,7 +8,6 @@ const PORT = config.PORT || 5000;
 const server = app.listen(PORT);
 initSocket(server);
 
-
 server.on("listening", async () => {
     console.log(`✅ Server running on ${PORT}`);
     await initDB();

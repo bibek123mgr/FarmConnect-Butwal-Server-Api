@@ -85,13 +85,13 @@ class ProductService {
     }
     static async getAllProducts() {
        
-        const [products] = await sequelize.query(`
+        const products = await sequelize.query(`
         SELECT 
             p.id, 
             p.name, 
             p.description, 
             p.unit, 
-            pp.price as rate, 
+            COALESCE(pp.price,0) as rate, 
             p.farmId, 
             p.categoryId, 
             f.farmName, 
@@ -102,12 +102,11 @@ class ProductService {
         INNER JOIN farms f ON p.farmId = f.id
         INNER JOIN categories c ON p.categoryId = c.id
         LEFT JOIN product_prices pp ON p.id = pp.productId
-        AND p.isActive = 1;`,
+        AND p.isActive = 1
+        GROUP BY p.id;`,
             {
                 type: QueryTypes.SELECT
         })
-
-        console.log(products)
 
          await redisClient.set(
             "products:stock:all",

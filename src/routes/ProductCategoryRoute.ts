@@ -6,15 +6,20 @@ import { validate } from "../utils/validation.middleware";
 import ProductCategoryValidation from "../validations/ProductCategoryValidation";
 import ProductCategoryController from "../controllers/admin/ProductCategoryController";
 import { Auth } from "../middlewares/Auth";
+import ProductCategoryRedisMiddleware from "../middlewares/ProductCategoryRedisMiddleware.";
+
+const productCategoryRedisMiddleware= new ProductCategoryRedisMiddleware();
 
 router
     .route("/categories")
     .post(
         Auth,
         validate(ProductCategoryValidation.createCategorySchema),
+        productCategoryRedisMiddleware.clearProductCategoryCache(),
         ProductCategoryController.create
     )
-    .get(ProductCategoryController.getAll);
+    .get(
+        productCategoryRedisMiddleware.getCachedProductCategory(),ProductCategoryController.getAll);
 
 router
     .route("/categories/:id")
@@ -22,8 +27,11 @@ router
     .put(
         Auth,
         validate(ProductCategoryValidation.updateCategorySchema),
+        productCategoryRedisMiddleware.clearProductCategoryCache(),
         ProductCategoryController.update
     )
-    .delete(Auth, ProductCategoryController.delete);
+    .delete(
+        Auth, 
+        productCategoryRedisMiddleware.clearProductCategoryCache(),ProductCategoryController.delete);
 
 export default router;

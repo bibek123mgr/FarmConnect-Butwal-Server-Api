@@ -17,7 +17,6 @@ router
         productStockRedisMiddleware.clearProductStockCache(),
         ProductController.create)
     .get(
-        Auth,
         productStockRedisMiddleware.getCachedProductStock(),
         ProductController.getAll
     );

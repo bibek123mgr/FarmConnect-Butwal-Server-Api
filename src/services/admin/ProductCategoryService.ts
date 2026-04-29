@@ -1,4 +1,5 @@
 import Category from "../../models/CategoryModel";
+import redisClient from "../../redis/redis";
 import { NotFoundError } from "../../utils/errors";
 
 export interface ICreateCategory {
@@ -32,9 +33,19 @@ class ProductCategoryService {
     static async getAllCategories() {
         return await Category.findAll({
             where: { isActive: true },
+            attributes: ["id", "name","image"],
+            order: [["sortOrder", "ASC"]],
+        });
+    }
+
+      static async getAllMyCategories() {
+        const categories = await Category.findAll({
+            where: { isActive: true },
             attributes: ["id", "name", "slug", "image", "sortOrder"],
             order: [["sortOrder", "ASC"]],
         });
+        await redisClient.set("categories:all", JSON.stringify(categories));
+        return categories;
     }
 
     static async getCategoryById(id: number) {

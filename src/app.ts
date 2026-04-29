@@ -3,6 +3,7 @@ import { AuthRoute, CartRoute, DamageRoute, FarmRoute, OrderRoute, ProductCatego
 import { config } from "./config/index";
 import { errorHandler } from "./utils/error.middleware";
 import {rateLimit} from "express-rate-limit";
+import cors from "cors";
 const NODE_ENV = config.NODE_ENV || "development";
 
 const app = express();
@@ -13,6 +14,8 @@ const limiter = rateLimit({
     message: "Too many requests from this IP, please try again later."
 });
 app.use(limiter);
+
+app.use(cors());
 
 app.use(express.json());
 app.use((req: Request, _res: Response, next: NextFunction) => {

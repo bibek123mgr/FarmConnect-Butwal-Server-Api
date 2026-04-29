@@ -27,6 +27,7 @@ class ProductController {
 
     static getAll = asyncHandler(async (_req: Request, res: Response) => {
         const products = await ProductService.getAllProducts();
+        
         return res.status(200).json({
             status: true,
             data: products,
