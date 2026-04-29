@@ -7,7 +7,6 @@ import { NotFoundError } from "../../utils/errors";
 import Category from "../../models/CategoryModel";
 import redisClient from "../../redis/redis";
 import { QueryTypes } from "sequelize";
-import ProductPrice from "../../models/ProductPriceModel";
 import ActualStock from "../../models/ActualStockMode";
 
 interface CreateProductDTO {

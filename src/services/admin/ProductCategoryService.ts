@@ -31,11 +31,13 @@ class ProductCategoryService {
     }
 
     static async getAllCategories() {
-        return await Category.findAll({
+        const categories = await Category.findAll({
             where: { isActive: true },
             attributes: ["id", "name","image"],
             order: [["sortOrder", "ASC"]],
         });
+        await redisClient.set("categories:all", JSON.stringify(categories));
+        return categories;
     }
 
       static async getAllMyCategories() {
@@ -44,7 +46,7 @@ class ProductCategoryService {
             attributes: ["id", "name", "slug", "image", "sortOrder"],
             order: [["sortOrder", "ASC"]],
         });
-        await redisClient.set("categories:all", JSON.stringify(categories));
+      
         return categories;
     }
 
