@@ -4,6 +4,8 @@ import { ConflictError, UnauthorizedError } from "../../utils/errors";
 import JwtHelper from "../../helper/jwtHepler";
 import bcrypt from "bcrypt";
 import Farm from "../../models/FarmModel";
+import { Sequelize } from "sequelize";
+import redisClient from "../../redis/redis";
 
 interface CreateUserDTO {
     name: string;
@@ -104,6 +106,27 @@ class AuthService {
         const token = this.generateAuthToken(user);
         const refreshToken = this.generateRefreshToken(user);
         return { user, token, refreshToken };
+    }
+
+    static async getUserById(id: number) {
+        const user = await User.findByPk(id, {
+            attributes: [
+                "id",
+                "email",
+                "role",
+                [Sequelize.col("farm.id"), "farmId"],
+                [Sequelize.col("farm.farmName"), "farmName"]
+            ],
+
+            include: [
+                {
+                    model: Farm,
+                    attributes: []
+                }
+            ]
+        });
+        await redisClient.set(`user:profile:${id}`, JSON.stringify(user), "EX", 600);
+        return user;
     }
 }
 

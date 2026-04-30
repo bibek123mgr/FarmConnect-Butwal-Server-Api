@@ -3,6 +3,7 @@ import Cart from "../models/CartModel";
 import Product from "../models/ProductModel";
 import { NotFoundError } from "../utils/errors";
 import redisClient from "../redis/redis";
+import { hash } from "node:crypto";
 
 export interface IAddToCart {
     userId: number;
@@ -62,8 +63,6 @@ class CartService {
                 "quantity",
                 "price",
                 "total",
-                "farmId",
-                "userId"
             ],
             include: [
                 {
@@ -74,8 +73,15 @@ class CartService {
             order: [["createdAt", "DESC"]],
             raw: true
         });
-        await redisClient.set(key, JSON.stringify(cart), "EX", 600);
-
+        if (cart.length > 0) {
+            const hashData: Record<string, string> = {};
+            cart.forEach((item) => {
+                hashData[item.id] = JSON.stringify(item);
+            });
+            await redisClient.hmset(key, hashData);
+            await redisClient.hset(key, hashData);
+            await redisClient.expire(key, 600);
+        }
         return cart;
     }
 
@@ -113,6 +119,23 @@ class CartService {
         );
 
         return true;
+    }
+
+    static async increaseQuantity(id: number) {
+        const cart = await Cart.findByPk(id);
+        if (!cart) throw new NotFoundError("Cart not found");
+        cart.quantity += 1;
+        cart.total = cart.quantity * cart.price;
+        await cart.save();
+
+    }
+
+    static async decreaseQuantity(id: number) {
+        const cart = await Cart.findByPk(id);
+        if (!cart) throw new NotFoundError("Cart not found");
+        cart.quantity -= 1;
+        cart.total = cart.quantity * cart.price;
+        await cart.save();
     }
 }
 

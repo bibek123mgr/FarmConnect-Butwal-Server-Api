@@ -30,16 +30,18 @@ class AuthController {
 
         res.cookie("accessToken", token, {
             httpOnly: true,
-            secure: true,
-            sameSite: "none",
-            maxAge: 24 * 60 * 60 * 1000
+            secure: false,
+            sameSite: "lax",
+            maxAge: 24 * 60 * 60 * 1000,
+            path: "/"
         });
 
         res.cookie("refreshToken", refreshToken, {
             httpOnly: true,
-            secure: true,
-            sameSite: "none",
-            maxAge: 7 * 24 * 60 * 60 * 1000
+            secure: false,
+            sameSite: "lax",
+            maxAge: 7 * 24 * 60 * 60 * 1000,
+            path: "/"
         });
 
         await redisClient.set(
@@ -100,6 +102,15 @@ class AuthController {
         return res.status(200).json({
             status: true,
             message: "Logout successful"
+        });
+    });
+
+    static me = asyncHandler(async (req: AuthRequest, res: Response) => {
+        const userId = req.user?.id as number;
+        const user = await AuthService.getUserById(userId);
+        return res.status(200).json({
+            status: true,
+            user
         });
     });
 

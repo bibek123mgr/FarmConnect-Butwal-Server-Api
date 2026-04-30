@@ -52,6 +52,26 @@ class CartController {
         });
     });
 
+    static increase = asyncHandler(async (req: Request, res: Response) => {
+        const id = Number(req.params.id);
+
+        await CartService.increaseQuantity(id);
+
+        return res.status(200).json({
+            status: true,
+            message: "Item quantity increased successfully",
+        });
+    });
+
+    static decrease = asyncHandler(async (req: Request, res: Response) => {
+        const id = Number(req.params.id);
+        await CartService.decreaseQuantity(id);
+        return res.status(200).json({
+            status: true,
+            message: "Item quantity decreased successfully",
+        });
+    });
+
     static clear = asyncHandler(async (req: AuthRequest, res: Response) => {
         const userId = req.user!.id;
      

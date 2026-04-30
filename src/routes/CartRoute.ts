@@ -24,6 +24,20 @@ router
     );
 
 router
+    .route("/carts/increment/:id")
+    .patch(
+        CartRedisMiddleware.IncrenmentCart(),
+        CartController.increase
+    );
+
+router
+    .route("/carts/decrement/:id")
+    .patch(
+        CartRedisMiddleware.DecrementCart(),
+        CartController.decrease
+    );
+
+router
     .route("/carts/clearall")
     .delete(
         CartRedisMiddleware.removeCartCache(),
@@ -32,13 +46,13 @@ router
 
 router
     .route("/carts/:id")
-    .put(
-        validate(CartValidation.updateCartSchema),
-         CartRedisMiddleware.removeCartCache(),
-         CartController.update
-        )
+    // .put(
+    //     validate(CartValidation.updateCartSchema),
+    //      CartRedisMiddleware.removeCartCache(),
+    //      CartController.update
+    //     )
     .delete(
-        CartRedisMiddleware.removeCartCache(),
+        CartRedisMiddleware.clearOneCartItem(),
         CartController.remove
     );
 
