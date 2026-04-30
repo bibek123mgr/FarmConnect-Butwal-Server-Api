@@ -7,14 +7,16 @@ class CartController {
     static add = asyncHandler(async (req: AuthRequest, res: Response) => {
         const userId = req.user!.id;
      
-        await CartService.addToCart({
+       const cart = await CartService.addToCart({
             userId,
             ...req.body,
         });
-
+        console.log(cart);
+    
         return res.status(201).json({
             status: true,
-            message: "Item added to cart"
+            message: "Item added to cart",
+            data: cart
         });
     });
 

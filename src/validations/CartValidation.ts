@@ -20,7 +20,6 @@ class BaseValidation {
 class CartValidation {
     public static addToCartSchema = Joi.object({
         productId: BaseValidation.getNumber("Product is required"),
-        farmId: BaseValidation.getNumber("Farm is required"),
         quantity: BaseValidation.getNumber("Quantity is required"),
         price: BaseValidation.getNumber("Price is required"),
     });

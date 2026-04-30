@@ -13,7 +13,6 @@ router
     .route("/carts")
     .post(
         validate(CartValidation.addToCartSchema),
-        CartRedisMiddleware.removeCartCache(),
         CartController.add);
 
 router

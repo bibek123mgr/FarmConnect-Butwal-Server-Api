@@ -90,7 +90,7 @@ class ProductService {
             p.name, 
             p.description, 
             p.unit, 
-            COALESCE(pp.price,0) as rate, 
+            COALESCE(pp.price, p.rate) as rate, 
             p.farmId, 
             p.categoryId, 
             f.farmName, 

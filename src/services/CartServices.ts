@@ -3,53 +3,110 @@ import Cart from "../models/CartModel";
 import Product from "../models/ProductModel";
 import { NotFoundError } from "../utils/errors";
 import redisClient from "../redis/redis";
-import { hash } from "node:crypto";
+import sequelize from "../config/database";
 
 export interface IAddToCart {
     userId: number;
     productId: number;
-    farmId: number;
     quantity: number;
     price: number;
 }
 
 class CartService {
+
     static async addToCart(data: IAddToCart) {
         const key = `cart:user:${data.userId}`;
-        await redisClient.del(key);
+        const t = await sequelize.transaction();
 
-        const existing = await Cart.findOne({
-            where: {
-                userId: data.userId,
-                productId: data.productId,
-                isActive: true,
-            },
-        });
+        try {
+            const product = await Product.findByPk(data.productId, { transaction: t });
+            if (!product) throw new NotFoundError("Product not found");
 
-        let newQty: number;
+            const price = Number(product.rate);
 
-        if (existing) {
-            newQty = Number(existing.quantity) + data.quantity;
-            const newTotal = newQty * data.price;
-
-            await existing.update({
-                quantity: newQty,
-                price: data.price,
-                total: newTotal,
-            });
-        } else {
-            newQty = data.quantity;
-
-            const cart = await Cart.create({
-                ...data,
-                total: data.quantity * data.price,
-                isActive: true,
+            const existing = await Cart.findOne({
+                where: {
+                    userId: data.userId,
+                    productId: data.productId,
+                    isActive: true,
+                },
+                transaction: t
             });
 
+            let cartItem;
+
+            if (existing) {
+                const newQty = Number(existing.quantity) + data.quantity;
+
+                if (newQty > Number(product.quantity)) {
+                    throw new Error("Insufficient stock");
+                }
+
+                const newTotal = newQty * price;
+
+                await existing.update({
+                    quantity: newQty,
+                    price,
+                    total: newTotal,
+                }, { transaction: t });
+
+                // ✅ No extra DB query — build object directly
+                cartItem = {
+                    id: existing.id,
+                    productId: existing.productId,
+                    productName: product.name,
+                    quantity: newQty,
+                    price,
+                    total: newTotal
+                };
+
+                // ✅ Redis sync
+                await redisClient.hset(
+                    key,
+                    existing.id.toString(),
+                    JSON.stringify(cartItem)
+                );
+
+            } else {
+                const newQty = data.quantity;
+
+                if (newQty > Number(product.quantity)) {
+                    throw new Error("Insufficient stock");
+                }
+
+                const cart = await Cart.create({
+                    ...data,
+                    price,
+                    farmId: product.farmId,
+                    total: newQty * price,
+                    isActive: true,
+                }, { transaction: t });
+
+                cartItem = {
+                    id: cart.id,
+                    productId: cart.productId,
+                    productName: product.name,
+                    quantity: newQty,
+                    price,
+                    total: newQty * price
+                };
+
+                await redisClient.hset(
+                    key,
+                    cart.id.toString(),
+                    JSON.stringify(cartItem)
+                );
+            }
+
+            await t.commit();
+
+            return cartItem; 
+
+        } catch (err) {
+            await t.rollback();
+            throw err;
         }
-        return true;
     }
-
     static async getMyCart(userId: number) {
 
         const key = `cart:user:${userId}`;
@@ -79,7 +136,6 @@ class CartService {
                 hashData[item.id] = JSON.stringify(item);
             });
             await redisClient.hmset(key, hashData);
-            await redisClient.hset(key, hashData);
             await redisClient.expire(key, 600);
         }
         return cart;
