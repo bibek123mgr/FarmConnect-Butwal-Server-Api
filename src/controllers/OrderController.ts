@@ -54,12 +54,21 @@ class OrderController {
             case PaymentMethod.KHALTI:
                 const khaltiResponse = await Payment.inititeKhaltiPayment(totalAmount);
                 await OrderService.updateGateWayReference(order.orderId, khaltiResponse.pidx);
-                return res.status(201).json(khaltiResponse);
-
+                await OrderService.updateGateWayReference(order.orderId, khaltiResponse.pidx);
+                return res.status(200).json({
+                    status: true,
+                    message: "Khalti Payment Initiated",
+                    url: khaltiResponse.payment_url
+                });
             case PaymentMethod.ESEWA:
                 const esewaResponse = await Payment.inititeEsewaPayment(totalAmount);
                 await OrderService.updateGateWayReference(order.orderId, esewaResponse.transaction_uuid);
-                return res.status(201).json(esewaResponse.formHtml);
+                return res.status(201).json(
+                    {
+                        status: true,
+                        message: "Esewa Payment Initiated", esewaResponseForm: esewaResponse.formHtml
+                    }
+                );
 
             default:
                 return res.status(400).json({

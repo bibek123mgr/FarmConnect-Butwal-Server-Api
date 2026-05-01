@@ -9,8 +9,9 @@ class EsewaCredentialsHelper {
     }
 
     public static generateUniqueId() {
-    return `id-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
-}
+        return Math.floor(100000 + Math.random() * 900000).toString();
+    }
+
 }
 
 export default EsewaCredentialsHelper

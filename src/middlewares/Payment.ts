@@ -36,10 +36,12 @@ class Payment {
             signature,
         };
 
+        console.log(payload);
+
         const formHtml = `
         <html>
         <body onload="document.forms[0].submit()">
-            <form action="${config.ESEWA_PAYMENT_INITIATE_URL}" method="POST">
+            <form action="${config.ESEWA_PAYMENT_INITIATE_URL}" method="POST" accept-charset="UTF-8">
                 ${Object.entries(payload)
                 .map(([key, value]) =>
                     `<input type="hidden" name="${key}" value="${value}" />`

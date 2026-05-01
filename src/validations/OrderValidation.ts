@@ -44,8 +44,7 @@ class OrderValidation {
                 Joi.object({
                     productId: BaseValidation.getPositiveNumber("Product is required"),
                     quantity: BaseValidation.getPositiveNumber("Quantity must be greater than 0"),
-                    rate: BaseValidation.getPositiveNumber("Rate must be greater than 0"),
-                    farmId: BaseValidation.getPositiveNumber("Farm is required"),
+                    rate: BaseValidation.getPositiveNumber("Rate must be greater than 0")
                 })
             )
             .min(1)

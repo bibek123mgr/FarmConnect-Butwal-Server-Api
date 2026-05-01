@@ -10,6 +10,10 @@ export const sequelize = new Sequelize(
         host: config.DB_HOST,
         port: Number(config.DB_PORT),
         dialect: config.DB_DIALECT as any,
+        timezone: '+05:45', 
+        dialectOptions: {
+            useUTC: false, 
+        },
         pool: {
             max: 5,
             min: 0,

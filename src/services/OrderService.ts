@@ -76,7 +76,7 @@ class OrderService {
                         price,
                         quantity,
                         subtotal,
-                        farmId: item.farmId,
+                        farmId: product.farmId,
                         userId: data.customerId
                     }, { transaction: t });
 
@@ -108,7 +108,7 @@ class OrderService {
                         chalanReturn: 0,
                         rate: price,
                         amount: subtotal,
-                        farmId: item.farmId,
+                        farmId: product.farmId,
                         createdBy: data.customerId,
                         tableId: order.id,
                         comesFrom: comesFrom.SALES,
@@ -164,7 +164,7 @@ class OrderService {
                         price,
                         quantity,
                         subtotal,
-                        farmId: item.farmId,
+                        farmId: product.farmId,
                         userId: data.customerId
                     }, { transaction: t });
 
@@ -197,7 +197,7 @@ class OrderService {
                         chalanReturn: 0,
                         rate: price,
                         amount: subtotal,
-                        farmId: item.farmId,
+                        farmId: product.farmId,
                         createdBy: data.customerId,
                         tableId: order.id,
                         comesFrom: comesFrom.RESERVE,
@@ -299,7 +299,7 @@ class OrderService {
                                 chalanReturn: 0,
                                 rate: item.price,
                                 amount: item.subtotal,
-                                farmId: item.farmId,
+                                farmId: product.farmId,
                                 createdBy: order.userId,
                                 tableId: order.id,
                                 comesFrom: comesFrom.SALES,

@@ -3,13 +3,15 @@ import { initDB } from "./config/database";
 import { config } from "./config/index";
 import { initSocket } from "./socket/socket";
 
-const PORT = config.PORT || 5000;
+const PORT = Number(config.PORT) || 5000;
 
-const server = app.listen(PORT);
+const server = app.listen(PORT, "0.0.0.0", () => {
+    console.log(`✅ Server running on http://localhost:${PORT}`);
+}); 
+
 initSocket(server);
 
 server.on("listening", async () => {
-    console.log(`✅ Server running on ${PORT}`);
     await initDB();
 });
 server.on("error", (err: any) => {

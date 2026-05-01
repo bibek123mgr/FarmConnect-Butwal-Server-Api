@@ -112,6 +112,7 @@ class AuthService {
         const user = await User.findByPk(id, {
             attributes: [
                 "id",
+                "name",
                 "email",
                 "role",
                 [Sequelize.col("farm.id"), "farmId"],
