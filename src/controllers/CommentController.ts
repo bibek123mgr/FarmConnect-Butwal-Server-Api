@@ -22,7 +22,7 @@ class CommentController {
     });
 
     static getByProduct = asyncHandler(async (req: Request, res: Response) => {
-        const productId = Number(req.params.productId);
+        const productId = Number(req.params.id);
 
         const comments = await CommentService.getCommentsByProduct(productId);
 

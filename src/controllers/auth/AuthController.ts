@@ -114,6 +114,23 @@ class AuthController {
         });
     });
 
+    static getAllUsers = asyncHandler(async (_req: Request, res: Response) => {
+        const users = await AuthService.getAllUsers();
+        return res.status(200).json({
+            status: true,
+            users
+        });
+    });
+
+    static getDashboardStatic= asyncHandler(async (req: AuthRequest, res: Response) => {
+        const userId = req.user?.id as number;
+        const data = await AuthService.getDashbaordStatic();
+        return res.status(200).json({
+            status: true,
+            data
+        });
+    });
+
 }
 
 export default AuthController;

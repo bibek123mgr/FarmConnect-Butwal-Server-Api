@@ -8,7 +8,8 @@ import DamageRoute from './DamageRoute';
 import ProductionRoute from './ProductionRoute'
 import ProductPriceRoute from "./ProductPriceRoute";
 import CommentRoute from "./CommentRoute";
-
+import NotificationRoute from "./NotificationRoute";
+import UserRoute from "./UserRoute";
 export {
     AuthRoute,
     FarmRoute,
@@ -19,5 +20,7 @@ export {
     DamageRoute,
     ProductionRoute,
     ProductPriceRoute,
-    CommentRoute
+    CommentRoute,
+    NotificationRoute,
+    UserRoute
 }

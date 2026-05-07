@@ -17,7 +17,17 @@ interface CreateProductDTO {
     unit: string;
     quantity?: number;
     rate?: number;
-    categoryId?: number
+    categoryId?: number,
+    image?: string
+}
+
+export interface IgetAllProductsFilter {
+    productname?: string;
+    category?: number | string;
+    page?: number;
+    limit?: number;
+    pricerangeFrom?: number;
+    pricerangeTo?: number | string;
 }
 
 class ProductService {
@@ -34,7 +44,8 @@ class ProductService {
                     rate: data.rate || 0,
                     isActive: true,
                     categoryId: data.categoryId,
-                    farmId: data.farmId
+                    farmId: data.farmId,
+                    image: data.image
                 },
                 { transaction: t }
             );
@@ -82,9 +93,57 @@ class ProductService {
             throw error;
         }
     }
-    static async getAllProducts() {
-       
-        const products = await sequelize.query(`
+    static async getAllProducts(data: IgetAllProductsFilter) {
+        let {
+            productname,
+            category,
+            page = 1,
+            limit = 20,
+            pricerangeFrom,
+            pricerangeTo
+        } = data;
+
+        const pageNumber = Number(page) || 1;
+        const limitNumber = Number(limit) || 20;
+
+        const fromPrice =
+            pricerangeFrom !== undefined ? Number(pricerangeFrom) : undefined;
+
+        const toPrice =
+            pricerangeTo !== undefined && pricerangeTo !== "max"
+                ? Number(pricerangeTo)
+                : undefined;
+
+        const offset = (pageNumber - 1) * limitNumber;
+
+        let whereConditions = `WHERE p.isActive = 1`;
+        let replacements: any = {
+            limit: limitNumber,
+            offset
+        };
+
+        if (productname && productname !== "all") {
+            whereConditions += ` AND p.name LIKE :productname`;
+            replacements.productname = `%${productname}%`;
+        }
+
+        if (category && category !== "all") {
+            whereConditions += ` AND p.categoryId = :category`;
+            replacements.category = Number(category);
+        }
+
+        if (fromPrice !== undefined) {
+            whereConditions += ` AND COALESCE(pp.price, p.rate) >= :fromPrice`;
+            replacements.fromPrice = fromPrice;
+        }
+
+        if (toPrice !== undefined) {
+            whereConditions += ` AND COALESCE(pp.price, p.rate) <= :toPrice`;
+            replacements.toPrice = toPrice;
+        }
+
+        const products = await sequelize.query(
+            `
         SELECT 
             p.id, 
             p.name, 
@@ -95,27 +154,33 @@ class ProductService {
             p.categoryId, 
             f.farmName, 
             c.name as categoryName,
-        COALESCE(SUM(a.openingStock + a.production - a.sales + a.salesReturn - a.damage - a.chalan + a.chalanReturn - a.reserveQuantity), 0) AS quantity
+            COALESCE(SUM(
+                a.openingStock + a.production - a.sales + a.salesReturn 
+                - a.damage - a.chalan + a.chalanReturn - a.reserveQuantity
+            ), 0) AS quantity
         FROM products p 
-        INNER JOIN actual_stock as a ON p.id = a.productId
+        INNER JOIN actual_stock a ON p.id = a.productId
         INNER JOIN farms f ON p.farmId = f.id
         INNER JOIN categories c ON p.categoryId = c.id
         LEFT JOIN product_prices pp ON p.id = pp.productId
-        AND p.isActive = 1
-        GROUP BY p.id;`,
-            {
-                type: QueryTypes.SELECT
-        })
+        
+        ${whereConditions}
 
-         await redisClient.set(
-            "products:stock:all",
-            JSON.stringify(products),
-            "EX",
-            600
+        GROUP BY p.id
+        ORDER BY p.id DESC
+        LIMIT :limit OFFSET :offset
+        `,
+            {
+                replacements,
+                type: QueryTypes.SELECT
+            }
         );
 
-        return products
+        const cacheKey = `products:stock:page=${pageNumber}:limit=${limitNumber}:name=${productname || "all"}:category=${category || "all"}:from=${fromPrice ?? 0}:to=${toPrice ?? "max"}`;
 
+        await redisClient.set(cacheKey, JSON.stringify(products), "EX", 600);
+
+        return products;
     }
 
     static async getAllMyProducts(userId: number) {

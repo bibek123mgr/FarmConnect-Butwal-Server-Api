@@ -11,7 +11,6 @@ class CartController {
             userId,
             ...req.body,
         });
-        console.log(cart);
     
         return res.status(201).json({
             status: true,

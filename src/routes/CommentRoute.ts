@@ -23,7 +23,7 @@ router.
 
 router
     .route("/comments/:id")
-    .put(
+    .patch(
         Auth,
         CommentController.update
     )

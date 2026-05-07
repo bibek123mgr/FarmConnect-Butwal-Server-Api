@@ -1,14 +1,30 @@
 import { NextFunction, Request, Response } from "express";
 import { asyncHandler } from "../utils/asyncHandler";
 import redisClient from "../redis/redis";
+import { IgetAllProductsFilter } from "../services/farmer/ProductService";
+
+type ProductRequest = Request<{}, {}, {}, IgetAllProductsFilter>;
+
+
 
 
 class ProductStockRedisMiddleware {
     getCachedProductStock() {
         return asyncHandler(
-            async (_req: Request, res: Response, next: NextFunction) => {
-                const key = `products:stock:all`;
-                const cachedData = await redisClient.get(key);
+            async (req: ProductRequest, res: Response, next: NextFunction) => {
+                
+            const data = (req as ProductRequest).query;                
+            const {
+                    productname,
+                    category,
+                    page = 1,
+                    limit = 20,
+                    pricerangeFrom,
+                    pricerangeTo
+                } = data;
+                
+                const cacheKey = `products:stock:page=${page}:limit=${limit}:name=${productname || "all"}:category=${category || "all"}:from=${pricerangeFrom || 0}:to=${pricerangeTo || "max"}`;
+                const cachedData = await redisClient.get(cacheKey);
 
                 if (cachedData) {
                     return res.status(200).json({

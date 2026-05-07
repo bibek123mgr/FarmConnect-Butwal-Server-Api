@@ -84,6 +84,12 @@ export class Product extends Model {
     })
     declare quantity: number;
 
+    @Column({
+        type: DataType.STRING,
+        allowNull: false,
+    })
+    declare image: string;
+
     @Default(true)
     @Column({
         type: DataType.BOOLEAN,

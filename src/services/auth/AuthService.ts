@@ -4,8 +4,9 @@ import { ConflictError, UnauthorizedError } from "../../utils/errors";
 import JwtHelper from "../../helper/jwtHepler";
 import bcrypt from "bcrypt";
 import Farm from "../../models/FarmModel";
-import { Sequelize } from "sequelize";
+import { QueryTypes, Sequelize } from "sequelize";
 import redisClient from "../../redis/redis";
+import sequelize from "../../config/database";
 
 interface CreateUserDTO {
     name: string;
@@ -129,6 +130,166 @@ class AuthService {
         await redisClient.set(`user:profile:${id}`, JSON.stringify(user), "EX", 600);
         return user;
     }
+
+    static async getAllUsers() {
+        const users = await User.findAll({
+            attributes: [
+                "id",
+                "name",
+                "email",
+                "role",
+                [Sequelize.col("farm.id"), "farmId"],
+                [Sequelize.col("farm.farmName"), "farmName"],
+                "createdAt"
+            ],
+            include: [
+                {
+                    model: Farm,
+                    attributes: []
+                }
+            ]
+        });
+        return users;
+    }
+
+    static async getDashbaordStatic() {
+
+    const [
+        totalAmount,
+        totalOrder,
+        totalProduct,
+        totalUser,
+        recentOrders,
+        topSellingProducts
+    ] = await Promise.all([
+
+        sequelize.query<{ totalAmount: number }>(
+            `
+            SELECT COALESCE(SUM(amount), 0) AS totalAmount
+            FROM payments
+            WHERE isActive = 1
+            `,
+            {
+                type: QueryTypes.SELECT,
+                plain: true
+            }
+        ),
+
+        sequelize.query<{ totalOrder: number }>(
+            `
+            SELECT COUNT(*) AS totalOrder
+            FROM orders
+            WHERE isActive = 1
+            AND status IN ('pending', 'confirmed', 'shipped', 'delivered')
+            `,
+            {
+                type: QueryTypes.SELECT,
+                plain: true
+            }
+        ),
+
+        sequelize.query<{ totalProduct: number }>(
+            `
+            SELECT COUNT(*) AS totalProduct
+            FROM products
+            WHERE isActive = 1
+            `,
+            {
+                type: QueryTypes.SELECT,
+                plain: true
+            }
+        ),
+
+        sequelize.query<{ totalUser: number }>(
+            `
+            SELECT COUNT(*) AS totalUser
+            FROM users
+            WHERE status = 1
+            `,
+            {
+                type: QueryTypes.SELECT,
+                plain: true
+            }
+        ),
+
+        sequelize.query<{
+            id: number;
+            order_status: string;
+            total_amount: number;
+            created_at: Date;
+            name: string;
+        }>(
+            `
+            SELECT 
+                orders.id AS id,
+                orders.status AS order_status,
+                orders.totalAmount AS total_amount,
+                orders.createdAt AS created_at,
+                users.name AS name
+
+            FROM orders
+
+            INNER JOIN users 
+                ON orders.userId = users.id
+
+            WHERE orders.isActive = 1
+
+            ORDER BY orders.createdAt DESC
+
+            LIMIT 5
+            `,
+            {
+                type: QueryTypes.SELECT
+            }
+        ),
+
+        sequelize.query<{
+            productId: number;
+            totalSales: number;
+            stock: number;
+        }>(
+            `
+            SELECT 
+                productId,
+
+                SUM(sales) AS totalSales,
+
+                SUM(
+                    openingStock
+                    - sales
+                    + salesReturn
+                    - damage
+                    - chalan
+                    + chalanReturn
+                    - reserveQuantity
+                    + production
+                ) AS stock
+
+            FROM actual_stock
+
+            GROUP BY productId
+
+            ORDER BY totalSales DESC
+
+            LIMIT 5
+            `,
+            {
+                type: QueryTypes.SELECT
+            }
+        )
+    ]);
+
+    return {
+        totalAmount: Number(totalAmount?.totalAmount ?? 0),
+        totalOrder: totalOrder?.totalOrder ?? 0,
+        totalProduct: totalProduct?.totalProduct ?? 0,
+        totalUser: totalUser?.totalUser ?? 0,
+
+        recentOrders,
+
+        topSellingProducts
+    };
+}
 }
 
 export default AuthService;

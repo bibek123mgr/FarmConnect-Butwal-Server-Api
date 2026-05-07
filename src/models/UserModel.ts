@@ -96,7 +96,7 @@ export class User extends Model {
         }
     }
 
-    // Method to safely return user data without password
+  
     toJSON() {
         const values = Object.assign({}, this.get());
         delete values.password;

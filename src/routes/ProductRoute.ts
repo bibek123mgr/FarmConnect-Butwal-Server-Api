@@ -6,6 +6,7 @@ import ProductValidation from "../validations/ProductValidation";
 import { validate } from "../utils/validation.middleware";
 
 import ProductStockRedisMiddleware from "../middlewares/ProductStockRedisMiddleware";
+import { upload } from "../middlewares/MulterConfig";
 
 const productStockRedisMiddleware = new ProductStockRedisMiddleware();
 
@@ -15,6 +16,7 @@ router
         Auth,
         validate(ProductValidation.create),
         productStockRedisMiddleware.clearProductStockCache(),
+        upload.single("image"),
         ProductController.create)
     .get(
         productStockRedisMiddleware.getCachedProductStock(),

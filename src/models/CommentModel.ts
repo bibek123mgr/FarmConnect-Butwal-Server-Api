@@ -1,5 +1,6 @@
 import { Column, DataType, Table, Model, ForeignKey, BelongsTo, Default } from "sequelize-typescript";
 import User from "./UserModel";
+import Product from "./ProductModel";
 
 @Table({
     timestamps: true,
@@ -27,7 +28,7 @@ export class Comment extends Model {
     })
     declare rating: number;
 
-    @ForeignKey(() => User)
+    @ForeignKey(() => Product)
     @Column({
         type: DataType.INTEGER,
         allowNull: false,

@@ -8,6 +8,14 @@ class ProductController {
         const { name, description, unit, rate, quantity, categoryId } = req.body;
         const userId = req.user!.id;
         const farmId = req.user!.farmId;
+        const file = req.file;
+        const image = file?.filename;
+        if (!file) {
+            return res.status(400).json({
+                success: false,
+                message: "Image is required",
+            });
+        }
         await ProductService.createProduct({
             userId,
             name,
@@ -16,7 +24,8 @@ class ProductController {
             rate,
             quantity,
             categoryId,
-            farmId
+            farmId,
+            image
         });
 
         return res.status(201).json({
@@ -25,9 +34,10 @@ class ProductController {
         });
     });
 
-    static getAll = asyncHandler(async (_req: Request, res: Response) => {
-        const products = await ProductService.getAllProducts();
-        
+    static getAll = asyncHandler(async (req: Request, res: Response) => {
+        const data = req.query
+        const products = await ProductService.getAllProducts(data);
+
         return res.status(200).json({
             status: true,
             data: products,
@@ -35,7 +45,7 @@ class ProductController {
     });
 
     static getAllMyProducts = asyncHandler(async (req: AuthRequest, res: Response) => {
-        const userId=req.user!.id
+        const userId = req.user!.id
         const products = await ProductService.getAllMyProducts(userId);
 
         return res.status(200).json({

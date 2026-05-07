@@ -1,10 +1,12 @@
 import express, { NextFunction, Request, Response } from "express";
-import { AuthRoute, CartRoute, CommentRoute, DamageRoute, FarmRoute, OrderRoute, ProductCategoryRoute, ProductionRoute, ProductPriceRoute, ProductRoute } from "./routes/index";
+import { AuthRoute, CartRoute, CommentRoute, DamageRoute, FarmRoute, NotificationRoute, OrderRoute, ProductCategoryRoute, ProductionRoute, ProductPriceRoute, ProductRoute, UserRoute } from "./routes/index";
 import { config } from "./config/index";
 import { errorHandler } from "./utils/error.middleware";
 import { rateLimit } from "express-rate-limit";
 import cookieParser from "cookie-parser";
 import cors from "cors";
+import { multerErrorHandler } from "./middlewares/multerErrorHandler";
+import path from "path";
 const NODE_ENV = config.NODE_ENV || "development";
 
 const app = express();
@@ -21,7 +23,11 @@ app.use(cors({
         "http://192.168.1.46:5173"
     ], credentials: true
 }));
-app.use(cookieParser());
+app.use(express.urlencoded({ extended: true }));
+app.use(
+    "/image",
+    express.static(path.join(process.cwd(), "public/images"))
+); app.use(cookieParser());
 app.use(express.json());
 app.use(limiter);
 
@@ -37,8 +43,10 @@ app.get("/", (_req: Request, res: Response) => {
 app.use("/api/auth", AuthRoute);
 app.use("/api/farmers", FarmRoute);
 app.use("/api",
+    UserRoute,
     ProductRoute,
     CommentRoute,
+    NotificationRoute,
     ProductCategoryRoute,
     OrderRoute,
     CartRoute,
@@ -46,6 +54,7 @@ app.use("/api",
     ProductionRoute,
     ProductPriceRoute);
 
+app.use(multerErrorHandler);
 app.use(errorHandler);
 
 export default app;
