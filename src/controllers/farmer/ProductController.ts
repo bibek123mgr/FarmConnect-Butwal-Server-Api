@@ -46,8 +46,11 @@ class ProductController {
 
     static getAllMyProducts = asyncHandler(async (req: AuthRequest, res: Response) => {
         const userId = req.user!.id
-        const products = await ProductService.getAllMyProducts(userId);
-
+        const data = req.query
+        const products = await ProductService.getAllMyProducts({
+            ...data,
+            userId
+        });
         return res.status(200).json({
             status: true,
             data: products,
@@ -67,9 +70,11 @@ class ProductController {
 
     static update = asyncHandler(async (req: Request, res: Response) => {
         const id = Number(req.params.id);
-
+        const file = req.file;
+        if (file) {
+            req.body.image = file.filename
+        }
         await ProductService.updateProduct(id, req.body);
-
         return res.status(200).json({
             status: true,
             message: "Product updated successfully"

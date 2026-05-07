@@ -3,7 +3,7 @@ import { sequelize } from "../../config/database";
 import Farm from "../../models/FarmModel";
 import Product from "../../models/ProductModel";
 import { comesFrom, Stock } from "../../models/StockModel";
-import { NotFoundError } from "../../utils/errors";
+import { BadRequestError, NotFoundError } from "../../utils/errors";
 import Category from "../../models/CategoryModel";
 import redisClient from "../../redis/redis";
 import { QueryTypes } from "sequelize";
@@ -21,11 +21,15 @@ interface CreateProductDTO {
     image?: string
 }
 
-export interface IgetAllProductsFilter {
+export interface IGetAdminProductFilter {
     productname?: string;
     category?: number | string;
     page?: number;
     limit?: number;
+    userId?: number
+}
+
+export interface IgetAllProductsFilter extends IGetAdminProductFilter {
     pricerangeFrom?: number;
     pricerangeTo?: number | string;
 }
@@ -183,38 +187,96 @@ class ProductService {
         return products;
     }
 
-    static async getAllMyProducts(userId: number) {
-        const products = await Product.findAll({
-            where: {
-                isActive: true,
-                farmerId: userId
-            },
-            attributes: [
-                "id",
-                "name",
-                "description",
-                "unit",
-                "rate",
-                "farmId",
-                "categoryId",
-                [Sequelize.col("farm.farmName"), "farmName"],
-                [Sequelize.col("category.name"), "categoryName"]
-            ],
-            include: [
-                {
-                    model: Farm,
-                    attributes: []
-                },
-                {
-                    model: Category,
-                    attributes: []
-                }
-            ],
-            order: [["createdAt", "DESC"]],
-            raw: true
-        });
-        return products;
+    static async getAllMyProducts(data: IGetAdminProductFilter) {
+        let {
+            productname,
+            category,
+            page = 1,
+            limit = 20,
+            userId
+        } = data;
 
+        const pageNumber = Number(page) || 1;
+        const limitNumber = Number(limit) || 20;
+
+        const offset = (pageNumber - 1) * limitNumber;
+
+        let whereConditions = `WHERE p.isActive = 1 AND p.farmerId = :userId`;
+
+        let replacements: any = {
+            userId,
+            limit: limitNumber,
+            offset
+        };
+
+        if (productname && productname !== "all") {
+            whereConditions += ` AND p.name LIKE :productname`;
+            replacements.productname = `%${productname}%`;
+        }
+
+        if (category && category !== "all") {
+            whereConditions += ` AND p.categoryId = :category`;
+            replacements.category = Number(category);
+        }
+
+        const products = await sequelize.query(
+            `
+        SELECT 
+            p.id, 
+            p.name, 
+            p.description, 
+            p.unit, 
+            COALESCE(pp.price, p.rate) as rate, 
+            p.farmId, 
+            p.categoryId,
+            p.image,
+            f.farmName, 
+            c.name as categoryName,
+            p.quantity as OpeningStock,
+            COALESCE(SUM(
+                a.openingStock + a.production - a.sales + a.salesReturn 
+                - a.damage - a.chalan + a.chalanReturn - a.reserveQuantity
+            ), 0) AS quantity
+        FROM products p 
+        INNER JOIN actual_stock a ON p.id = a.productId
+        INNER JOIN farms f ON p.farmId = f.id
+        INNER JOIN categories c ON p.categoryId = c.id
+        LEFT JOIN product_prices pp ON p.id = pp.productId
+        
+        ${whereConditions}
+
+        GROUP BY p.id
+        ORDER BY p.id DESC
+        LIMIT :limit OFFSET :offset
+        `,
+            {
+                replacements,
+                type: QueryTypes.SELECT
+            }
+        );
+
+        const totalResult: any = await sequelize.query(
+            `
+        SELECT COUNT(*) as total
+        FROM products p
+        ${whereConditions}
+        `,
+            {
+                replacements,
+                type: QueryTypes.SELECT
+            }
+        );
+
+        const totalProducts = Number(totalResult[0].total);
+
+        const totalPages = Math.ceil(totalProducts / limitNumber);
+
+        return {
+            products,
+            productsCount: products.length,
+            totalProducts,
+            totalPages
+        };
     }
 
     static async getProductById(id: number) {
@@ -252,6 +314,7 @@ class ProductService {
     }
 
     static async updateProduct(id: number, data: Partial<CreateProductDTO>) {
+        
         const transcation = await sequelize.transaction();
         try {
             const product = await Product.findByPk(id);
@@ -260,13 +323,18 @@ class ProductService {
                 throw new NotFoundError("Product not found");
             }
 
+            if (product.name === data.name && product.description === data.description && product.unit === data.unit && product.quantity == data.quantity && product.rate == data.rate && product.categoryId == data.categoryId && !data.image) {
+                throw new BadRequestError("No changes found");
+            }
+
             await product.update({
                 name: data.name ?? product.name,
                 description: data.description ?? product.description,
                 unit: data.unit ?? product.unit,
                 quantity: data.quantity ?? product.quantity,
                 rate: data.rate ?? product.rate,
-                categoryId: data.categoryId ?? product.categoryId
+                categoryId: data.categoryId ?? product.categoryId,
+                image: data.image ?? product.image
             });
 
             await ActualStock.update(

@@ -23,12 +23,12 @@ app.use(cors({
         "http://192.168.1.46:5173"
     ], credentials: true
 }));
-app.use(express.urlencoded({ extended: true }));
 app.use(
     "/image",
     express.static(path.join(process.cwd(), "public/images"))
 ); app.use(cookieParser());
 app.use(express.json());
+app.use(express.urlencoded({ extended: true }));
 app.use(limiter);
 
 app.use((req: Request, _res: Response, next: NextFunction) => {

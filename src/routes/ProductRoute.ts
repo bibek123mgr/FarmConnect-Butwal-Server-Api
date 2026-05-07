@@ -28,6 +28,7 @@ router
     .route("/products/my")
     .get(
         Auth,
+        validate(ProductValidation.getAllProductForAdmin),
         ProductController.getAllMyProducts
     );
 router
@@ -37,6 +38,7 @@ router
         validate(ProductValidation.update),
         productStockRedisMiddleware.clearProductStockCache(),
         productStockRedisMiddleware.getCachedProductStockById(),
+        upload.single("image"),
         ProductController.update)
     .get(
         Auth,

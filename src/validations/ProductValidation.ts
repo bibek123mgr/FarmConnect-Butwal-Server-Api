@@ -46,6 +46,22 @@ class ProductValidation {
         quantity: BaseValidation.getOptionalNumber(),
         categoryId: BaseValidation.getNumber("Product category is required")
     })
+
+    public static getAllProduct=Joi.object({
+        productname: BaseValidation.getOptionalString(),
+        categoryId: Joi.string().allow(null, ""),
+        page: BaseValidation.getNumber("Page is required"),
+        limit: BaseValidation.getNumber("Limit is required"),
+        pricerangeFrom: Joi.number().allow(null, ""),
+        pricerangeTo: Joi.string().allow(null, ""),
+    })
+
+    public static getAllProductForAdmin=Joi.object({
+        productname: BaseValidation.getOptionalString(),
+        categoryId: Joi.string().allow(null, ""),
+        page: BaseValidation.getNumber("Page is required"),
+        limit: BaseValidation.getNumber("Limit is required")
+    })
 }
 
 export default ProductValidation
