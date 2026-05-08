@@ -13,6 +13,7 @@ import {
 import User from "./UserModel";
 import { OrderItem } from "./OrderItemModel";
 import Payment, { PaymentMethod, PaymentStatus } from "./PaymentModel";
+import VendorOrder from "./VendorOrder";
 
 export enum OrderStatus {
     PENDING = "pending",
@@ -97,6 +98,9 @@ export class Order extends Model {
         type: DataType.BOOLEAN,
     })
     declare isActive: boolean;
+
+    @HasMany(() => VendorOrder)
+    vendorOrders!: VendorOrder[];
 }
 
 export default Order;

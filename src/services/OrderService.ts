@@ -8,6 +8,7 @@ import Order, { OrderStatus } from "../models/OrderModel";
 import Payment, { PaymentMethod, PaymentStatus } from "../models/PaymentModel";
 import Product from "../models/ProductModel";
 import Stock, { comesFrom } from "../models/StockModel";
+import VendorOrder from "../models/VendorOrder";
 import redisClient from "../redis/redis";
 import { NotFoundError } from "../utils/errors";
 import { Sequelize } from "sequelize";
@@ -46,6 +47,8 @@ class OrderService {
             }, 0);
 
             const farmerIds = new Set<number>();
+
+
             const order = await Order.create({
                 userId: data.customerId,
                 totalAmount: totalAmount,
@@ -57,15 +60,51 @@ class OrderService {
 
             }, { transaction: t });
 
-            if (data.paymentMethod === PaymentMethod.COD) {
+            const farmerWiseTotals = new Map<
+                number,
+                {
+                    totalAmount: number;
+                    farmerId: number;
+                    items: typeof data.items;
+                }
+            >();
 
-                for (const item of data.items) {
+            for (const item of data.items) {
+                const product = await Product.findByPk(item.productId, {
+                    transaction: t
+                });
+                if (!product) {
+                    throw new NotFoundError("Product not found");
+                }
+                const farmId = product.farmId;
+                const farmerId = product.farmerId;
+                const totalAmount = item.rate * item.quantity;
 
-                    const product = await Product.findByPk(item.productId, { transaction: t });
-                    if (!product) { throw new NotFoundError("Product not found"); }
+                if (!farmerWiseTotals.has(farmId)) {
+                    farmerWiseTotals.set(farmId, {
+                        totalAmount: 0,
+                        farmerId: farmerId,
+                        items: []
+                    });
+                }
+                const farmerData = farmerWiseTotals.get(farmId)!;
+                farmerData.totalAmount += totalAmount;
+                farmerData.items.push(item);
+            }
 
-                    farmerIds.add(product.farmerId);
+            for (const [farmId, farmerData] of farmerWiseTotals) {
+                const totalAmount = farmerData.totalAmount;
+                const items = farmerData.items;
+                const farmerId = farmerData.farmerId;
+                const vendorOrder = await VendorOrder.create({
+                    orderId: order.id,
+                    totalAmount,
+                    farmId,
+                    userId: data.customerId,
+                    isActive: true
+                }, { transaction: t });
 
+                for (const item of items) {
                     const price = Number(item.rate);
                     const quantity = Number(item.quantity);
                     const subtotal = price * quantity;
@@ -76,143 +115,106 @@ class OrderService {
                         price,
                         quantity,
                         subtotal,
-                        farmId: product.farmId,
-                        userId: data.customerId
+                        farmId: farmId,
+                        userId: data.customerId,
+                        vendorOrderId: vendorOrder.id
                     }, { transaction: t });
-
                     const availableStock = await AvailableStockHelper.getAvailableStock(item.productId);
 
                     if (availableStock < quantity) {
                         t.rollback();
                         throw new Error("Insufficient stock");
                     }
-                    await ActualStock.increment(
-                        {
-                            sales: quantity
-                        },
-                        {
-                            where: {
-                                productId: item.productId
+                    if (data.paymentMethod === PaymentMethod.COD) {
+                        await ActualStock.increment(
+                            {
+                                sales: quantity
                             },
-                            transaction: t
-                        }
-                    );
+                            {
+                                where: {
+                                    productId: item.productId
+                                },
+                                transaction: t
+                            }
+                        );
 
-                    await Stock.create({
-                        productId: item.productId,
-                        openingStock: 0,
-                        sales: quantity,
-                        salesReturn: 0,
-                        damage: 0,
-                        chalan: 0,
-                        chalanReturn: 0,
-                        rate: price,
-                        amount: subtotal,
-                        farmId: product.farmId,
-                        createdBy: data.customerId,
-                        tableId: order.id,
-                        comesFrom: comesFrom.SALES,
-                        reserveQuantity: 0
-                    }, { transaction: t });
+                        await Stock.create({
+                            productId: item.productId,
+                            openingStock: 0,
+                            sales: quantity,
+                            salesReturn: 0,
+                            damage: 0,
+                            chalan: 0,
+                            chalanReturn: 0,
+                            rate: price,
+                            amount: subtotal,
+                            farmId: farmId,
+                            createdBy: data.customerId,
+                            tableId: order.id,
+                            comesFrom: comesFrom.SALES,
+                            reserveQuantity: 0
+                        }, { transaction: t });
+                    } else {
+                        await ActualStock.increment(
+                            {
+                                reserveQuantity: quantity
+                            },
+                            {
+                                where: {
+                                    productId: item.productId
+                                },
+                                transaction: t
+                            }
+                        );
+
+                        await Stock.create({
+                            productId: item.productId,
+                            openingStock: 0,
+                            sales: 0,
+                            salesReturn: 0,
+                            damage: 0,
+                            chalan: 0,
+                            chalanReturn: 0,
+                            rate: price,
+                            amount: subtotal,
+                            farmId: farmId,
+                            createdBy: data.customerId,
+                            tableId: order.id,
+                            comesFrom: comesFrom.RESERVE,
+                            reserveQuantity: quantity
+                        }, { transaction: t });
+                    }
+
                 }
-                await Payment.create({
-                    orderId: order.id,
-                    amount: totalAmount,
-                    paymentMethod: data.paymentMethod,
-                    status: PaymentStatus.PENDING,
-                    userId: data.customerId,
-                }, { transaction: t });
-
-                for (const farmer of farmerIds) {
-                    await Notification.create({
-                        userId: farmer,
-                        title: "New Order",
-                        message: `You received a new order #${order.id}`,
-                        type: "ORDER",
-                        meta: {
-                            orderId: order.id
-                        }
-                    }, { transaction: t });
-
-                }
-
                 await Notification.create({
-                    userId: data.customerId,
-                    title: "Order Placed",
-                    message: `Your order #${order.id} has been placed successfully`,
+                    userId: farmerId,
+                    title: "New Order",
+                    message: `You received a new order #${order.id}`,
                     type: "ORDER",
                     meta: {
                         orderId: order.id
                     }
                 }, { transaction: t });
 
-            } else {
-
-                for (const item of data.items) {
-
-                    const product = await Product.findByPk(item.productId, { transaction: t });
-
-                    if (!product) { throw new NotFoundError("Product not found"); }
-
-                    const price = Number(item.rate);
-                    const quantity = Number(item.quantity);
-                    const subtotal = price * quantity;
-
-                    await OrderItem.create({
-                        orderId: order.id,
-                        productId: item.productId,
-                        price,
-                        quantity,
-                        subtotal,
-                        farmId: product.farmId,
-                        userId: data.customerId
-                    }, { transaction: t });
-
-                    const availableStock = await AvailableStockHelper.getAvailableStock(item.productId);
-
-                    if (availableStock < quantity) {
-                        t.rollback();
-                        throw new Error("Insufficient stock");
-                    }
-
-                    await ActualStock.increment(
-                        {
-                            reserveQuantity: quantity
-                        },
-                        {
-                            where: {
-                                productId: item.productId
-                            },
-                            transaction: t
-                        }
-                    );
-
-                    await Stock.create({
-                        productId: item.productId,
-                        openingStock: 0,
-                        sales: 0,
-                        salesReturn: 0,
-                        damage: 0,
-                        chalan: 0,
-                        chalanReturn: 0,
-                        rate: price,
-                        amount: subtotal,
-                        farmId: product.farmId,
-                        createdBy: data.customerId,
-                        tableId: order.id,
-                        comesFrom: comesFrom.RESERVE,
-                        reserveQuantity: quantity
-                    }, { transaction: t });
-                }
-                await Payment.create({
-                    orderId: order.id,
-                    amount: totalAmount,
-                    paymentMethod: data.paymentMethod,
-                    status: PaymentStatus.PENDING,
-                    userId: data.customerId,
-                }, { transaction: t });
-
             }
+
+            await Payment.create({
+                orderId: order.id,
+                amount: totalAmount,
+                paymentMethod: data.paymentMethod,
+                status: PaymentStatus.PENDING,
+                userId: data.customerId,
+            }, { transaction: t });
+
+            await Notification.create({
+                userId: data.customerId,
+                title: "Order Placed",
+                message: `Your order #${order.id} has been placed successfully`,
+                type: "ORDER",
+                meta: {
+                    orderId: order.id
+                }
+            }, { transaction: t });
             await t.commit();
             return {
                 farmerIds: Array.from(farmerIds),
@@ -351,7 +353,64 @@ class OrderService {
         }
 
     }
+    static async getOrderDetailsForUser(id: number) {
 
+        const order = await Order.findByPk(id, {
+            attributes: [
+                "id",
+                "totalAmount",
+                "address",
+                "paymentMethod",
+                "paymentStatus",
+                "status",
+                "createdAt"
+            ],
+
+            include: [
+                {
+                    model: VendorOrder,
+                    as: "vendorOrders",
+
+                    attributes: [
+                        "id",
+                        "totalAmount",
+                        "farmId"
+                    ],
+
+                    include: [
+                        {
+                            model: Farm,
+                            as: "farm",
+                            attributes: ["farmName"]
+                        },
+
+                        {
+                            model: OrderItem,
+                            as: "orderItems",
+
+                            attributes: [
+                                "id",
+                                "productId",
+                                "quantity",
+                                "price",
+                                "subtotal"
+                            ],
+
+                            include: [
+                                {
+                                    model: Product,
+                                    as: "product",
+                                    attributes: ["name", "image"]
+                                }
+                            ]
+                        }
+                    ]
+                }
+            ]
+        });
+
+        return order;
+    }
     static async getOrderDetails(id: number) {
         const orderItems = await OrderItem.findAll({
             where: { orderId: id },

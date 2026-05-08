@@ -11,6 +11,7 @@ import Order from "./OrderModel";
 import Product from "./ProductModel";
 import User from "./UserModel";
 import Farm from "./FarmModel";
+import VendorOrder from "./VendorOrder";
 
 @Table({
     tableName: "order_items",
@@ -81,6 +82,13 @@ export class OrderItem extends Model {
 
     @BelongsTo(() => Farm)
     farm!: Farm;
+
+    @ForeignKey(() => VendorOrder)
+    @Column({ type: DataType.INTEGER })
+    declare vendorOrderId: number;
+    
+    @BelongsTo(() => VendorOrder)
+    vendorOrder!: VendorOrder;
 
     @Default(true)
     @Column({

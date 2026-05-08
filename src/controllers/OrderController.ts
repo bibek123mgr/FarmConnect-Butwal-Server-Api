@@ -136,7 +136,7 @@ class OrderController {
 
     static getOrderDetails = asyncHandler(async (req: AuthRequest, res: Response) => {
         const id = Number(req.params.id);
-        const orders = await OrderService.getOrderDetails(id);
+        const orders = await OrderService.getOrderDetailsForUser(id);
         res.status(200).json({ status: true, data: orders });
     });
 
