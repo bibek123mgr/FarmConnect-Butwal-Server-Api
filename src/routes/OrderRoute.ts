@@ -6,6 +6,7 @@ import OrderValidation from "../validations/OrderValidation";
 import OrderController from "../controllers/OrderController";
 import OrderRedisMiddleware from "../middlewares/OrderRedisMiddleware";
 import ProductStockRedisMiddleware from "../middlewares/ProductStockRedisMiddleware";
+import OrderService from "../services/OrderService";
 
 const orderRedisMiddleware = new OrderRedisMiddleware();
 const productStockRedisMiddleware = new ProductStockRedisMiddleware();
@@ -18,6 +19,10 @@ router
         orderRedisMiddleware.clearCache(),
         productStockRedisMiddleware.clearProductStockCache(),
         OrderController.create
+    )
+    .get(
+        Auth,
+        OrderController.getAllAdminOrders
     )
 
 router

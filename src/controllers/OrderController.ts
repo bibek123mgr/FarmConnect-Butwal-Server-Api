@@ -5,6 +5,8 @@ import OrderService, { OrderRseponseType } from "../services/OrderService";
 import { sendNotificationToUser } from "../socket/socket";
 import { PaymentMethod, PaymentStatus } from "../models/PaymentModel";
 import Payment from "../middlewares/Payment";
+import CartService from "../services/CartServices";
+import redisClient from "../redis/redis";
 
 class OrderController {
 
@@ -17,6 +19,9 @@ class OrderController {
         });
 
         const totalAmount = Number(order.totalAmount);
+        const key = `cart:user:${req.user?.id}`;
+        await redisClient.del(key);
+        await CartService.clearCart(req.user!.id);
 
         switch (req.body.paymentMethod) {
             case PaymentMethod.COD:
@@ -131,8 +136,25 @@ class OrderController {
 
     static getAll = asyncHandler(async (req: AuthRequest, res: Response) => {
         const orders = await OrderService.getAllOrders(req.user!.id);
-        res.status(200).json({ status: true, data: orders });
+       return res.status(200).json({ status: true, data: orders });
     });
+
+    static getAllAdminOrders = asyncHandler(async (req: AuthRequest, res: Response) => {
+        const farmId = req.user?.farmId;
+        if (!farmId) {
+            return res.status(400).json({
+                status: false,
+                message: "Invalid user details"
+            });
+        }
+        const orders = await OrderService.getAllAdminOrders(farmId!);
+        return res.status(200).json({
+            status: true,
+            message: "Orders fetched successfully",
+            data: orders
+        });
+    });
+
 
     static getOrderDetails = asyncHandler(async (req: AuthRequest, res: Response) => {
         const id = Number(req.params.id);

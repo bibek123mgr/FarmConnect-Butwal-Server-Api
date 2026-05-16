@@ -464,6 +464,36 @@ class OrderService {
         return orders;
     }
 
+    static async getAllAdminOrders(farmId: number) {
+        console.log("farmId", farmId);
+        const orders = await VendorOrder.findAll({
+            where: { farmId },
+
+            attributes: [
+                "id",
+                "totalAmount",
+                "createdAt",
+                [Sequelize.col("order.address"), "address"],
+                [Sequelize.col("order.paymentMethod"), "paymentMethod"],
+                [Sequelize.col("order.paymentStatus"), "paymentStatus"],
+                [Sequelize.col("order.status"), "status"],
+                
+            ],
+
+            include: [
+                {
+                    model: Order,
+                    attributes: [],
+                }
+            ],
+
+            order: [["createdAt", "DESC"]],
+            raw: true,
+        });
+
+        return orders;
+    }
+
     static async getOrderById(id: number) {
         const order = await Order.findByPk(id, {
             attributes: [
