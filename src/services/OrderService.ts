@@ -411,6 +411,82 @@ class OrderService {
 
         return order;
     }
+
+    static async getOrderDetailsForAdmin(farmId: number, orderId: number) {
+
+        console.log("orderId", orderId, "farmId", farmId);
+        const orders = await VendorOrder.findOne({
+            where: {
+                id: orderId,
+                farmId
+            },
+
+            attributes: [
+                "id",
+                "totalAmount",
+                "createdAt",
+            ],
+
+            include: [
+                {
+                    model: Order,
+                    as: "order",
+                    attributes: [
+                        "address",
+                        "paymentMethod",
+                        "paymentStatus",
+                        "status",
+                    ],
+                },
+
+                {
+                    model: OrderItem,
+                    as: "orderItems",
+                    attributes: [
+                        "id",
+                        "productId",
+                        "quantity",
+                        "price",
+                        "subtotal",
+                    ],
+                    include: [
+                        {
+                            model: Product,
+                            as: "product",
+                            attributes: [
+                                "name",
+                                "image",
+                            ],
+                        }
+                    ]
+                }
+            ],
+        });
+
+        if (!orders) return null;
+
+        return {
+            id: orders.id,
+            totalAmount: orders.totalAmount,
+            createdAt: orders.createdAt,
+
+            address: orders.order?.address,
+            paymentMethod: orders.order?.paymentMethod,
+            paymentStatus: orders.order?.paymentStatus,
+            status: orders.order?.status,
+
+            products: orders.orderItems.map((item: any) => ({
+                id: item.id,
+                productId: item.productId,
+                productName: item.product?.name,
+                productImage: item.product?.image,
+                quantity: Number(item.quantity),
+                price: Number(item.price),
+                subtotal: Number(item.subtotal),
+            })),
+        };
+    }
+
     static async getOrderDetails(id: number) {
         const orderItems = await OrderItem.findAll({
             where: { orderId: id },
@@ -477,7 +553,7 @@ class OrderService {
                 [Sequelize.col("order.paymentMethod"), "paymentMethod"],
                 [Sequelize.col("order.paymentStatus"), "paymentStatus"],
                 [Sequelize.col("order.status"), "status"],
-                
+
             ],
 
             include: [

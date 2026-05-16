@@ -162,6 +162,14 @@ class OrderController {
         res.status(200).json({ status: true, data: orders });
     });
 
+    static getOrderDetailsForAdmin = asyncHandler(async (req: AuthRequest, res: Response) => {
+        const id = Number(req.params.id);
+        const farmId = req.user?.farmId;
+        const orders = await OrderService.getOrderDetailsForAdmin(farmId!,id);
+        res.status(200).json({ status: true, data: orders });
+    });
+
+
     static getById = asyncHandler(async (req: Request, res: Response) => {
         const order = await OrderService.getOrderById(Number(req.params.id));
         res.status(200).json(

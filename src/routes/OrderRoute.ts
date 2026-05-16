@@ -46,9 +46,17 @@ router
     .route("/orders/details/:id")
     .get(
         Auth,
+        OrderController.getOrderDetailsForAdmin
+    );
+
+router
+    .route("/orders/my/details/:id")
+    .get(
+        Auth,
         orderRedisMiddleware.getCachedOrderDataDetails(),
         OrderController.getOrderDetails
     );
+
 
 
 router
