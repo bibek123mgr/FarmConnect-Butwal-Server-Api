@@ -41,7 +41,6 @@ router
         upload.single("image"),
         ProductController.update)
     .get(
-        Auth,
         ProductController.getById)
     .delete(
         Auth,

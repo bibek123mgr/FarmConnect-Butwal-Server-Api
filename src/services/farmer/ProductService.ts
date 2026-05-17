@@ -289,6 +289,7 @@ class ProductService {
                 "unit",
                 "rate",
                 "farmId",
+                "image",
                 "categoryId",
                 [Sequelize.col("farm.farmName"), "farmName"],
                 [Sequelize.col("category.name"), "categoryName"]
