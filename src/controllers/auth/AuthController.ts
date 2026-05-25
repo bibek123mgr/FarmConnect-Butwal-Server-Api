@@ -4,8 +4,73 @@ import { asyncHandler } from "../../utils/asyncHandler";
 import redisClient from "../../redis/redis";
 import JwtHelper from "../../helper/jwtHepler";
 import { AuthRequest } from "../../middlewares/Auth";
+import { config } from "../../config/index"
+import {OAuth2Client} from "google-auth-library";
+const googleClient = new OAuth2Client(config.GOOGLEOAUTH_CLIENT_ID!);
 
 class AuthController {
+    static registerWithGoogleOrLogin = asyncHandler(async (req: Request, res: Response) => {
+        const { credentials } = req.body;
+        const ticket = await googleClient.verifyIdToken({
+            idToken: credentials,
+            audience: config.GOOGLEOAUTH_CLIENT_ID
+        });
+        const payload = ticket.getPayload();
+        console.log(payload);
+        if (!payload) {
+            return res.status(400).json({
+                status: false,
+                message: "Invalid Google token"
+            });
+        }
+        const email = payload.email;
+        const name = payload.name;
+        const googleId = payload.sub;
+        if (!email || !name || !googleId) {
+            return res.status(400).json({
+                status: false,
+                message: "Missing required user information from Google"
+            });
+        }
+        const password = "";
+        const data = await AuthService.loginWithGoogleOrSignUp({ email, name, googleId, password });
+        if (!data) {
+            return res.status(400).json({
+                status: false,
+                message: "User Already Exists"
+            });
+        }
+        const { user, token, refreshToken } = data;
+
+        res.cookie("accessToken", token, {
+            httpOnly: true,
+            secure: false,
+            sameSite: "lax",
+            maxAge: 24 * 60 * 60 * 1000,
+            path: "/"
+        });
+
+        res.cookie("refreshToken", refreshToken, {
+            httpOnly: true,
+            secure: false,
+            sameSite: "lax",
+            maxAge: 7 * 24 * 60 * 60 * 1000,
+            path: "/"
+        });
+
+        await redisClient.set(
+            `refresh-token:users:${user.id}`,
+            refreshToken,
+            "EX",
+            604800
+        );
+        return res.status(200).json({
+            status: true,
+            message: "Login successful",
+            token
+        });
+    });
+
     static register = asyncHandler(async (req: Request, res: Response) => {
         const { name, email, password, role } = req.body;
 
@@ -122,7 +187,7 @@ class AuthController {
         });
     });
 
-    static getDashboardStatic= asyncHandler(async (req: AuthRequest, res: Response) => {
+    static getDashboardStatic = asyncHandler(async (req: AuthRequest, res: Response) => {
         const userId = req.user?.id as number;
         const data = await AuthService.getDashbaordStatic();
         return res.status(200).json({

@@ -8,6 +8,7 @@ import AuthRedisMiddleware from "../middlewares/AuthRedisMiddleware";
 const authRedisMiddleware = new AuthRedisMiddleware();
 
 router.post('/register', AuthValidation.register, AuthController.register);
+router.post('/login-with-google', AuthController.registerWithGoogleOrLogin);
 router.post('/login', AuthValidation.login, AuthController.login);
 router.get('/getme', Auth, authRedisMiddleware.getMyProfileFromCache(), AuthController.me);
 router.post('/refresh-token', Auth, AuthController.refreshToken);

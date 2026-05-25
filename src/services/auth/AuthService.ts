@@ -13,6 +13,7 @@ interface CreateUserDTO {
     email: string;
     password: string;
     role?: string;
+    googleId?: string
 }
 
 class AuthService {
@@ -30,10 +31,24 @@ class AuthService {
         return false;
     }
 
+
+    static async createUserWithGoogle(data: CreateUserDTO) {
+        const user = await User.create({
+            name: data.name,
+            email: data.email,
+            password: "",
+            googleId: data.googleId,
+            role: UserRole.USER,
+            status: true,
+        });
+
+        return user;
+    }
     static async createUser(data: CreateUserDTO) {
         await this.checkExistingUser(data.email);
         const user = await User.create({
             name: data.name,
+            googleId: data.googleId,
             email: data.email,
             password: data.password,
             role: (data.role as UserRole) || UserRole.USER,
@@ -101,6 +116,35 @@ class AuthService {
         return { user, token };
     }
 
+    static async loginWithGoogleOrSignUp(data: CreateUserDTO) {
+        const email = data.email;
+        const userExists = await User.scope('withPassword').findOne(
+            {
+                where: { email },
+                include: [
+                    {
+                        model: Farm,
+                        attributes: ["id"]
+                    }
+                ]
+            }
+        );
+        let user;
+        if (!userExists) {
+            user = await this.createUser(data);
+            const token = this.generateAuthToken(user);
+            const refreshToken = this.generateRefreshToken(user);
+            return { user, token, refreshToken };
+        } else if (userExists && userExists.googleId) {
+            const token = this.generateAuthToken(userExists);
+            const refreshToken = this.generateRefreshToken(userExists);
+            return { user: userExists, token, refreshToken };
+        } else {
+            return null;
+        }
+
+    }
+
     static async loginUser(email: string, password: string) {
         const user = await this.getUserWithPassword(email);
         await this.validatePassword(password, user.password);
@@ -154,72 +198,72 @@ class AuthService {
 
     static async getDashbaordStatic() {
 
-    const [
-        totalAmount,
-        totalOrder,
-        totalProduct,
-        totalUser,
-        recentOrders,
-        topSellingProducts
-    ] = await Promise.all([
+        const [
+            totalAmount,
+            totalOrder,
+            totalProduct,
+            totalUser,
+            recentOrders,
+            topSellingProducts
+        ] = await Promise.all([
 
-        sequelize.query<{ totalAmount: number }>(
-            `
+            sequelize.query<{ totalAmount: number }>(
+                `
             SELECT COALESCE(SUM(amount), 0) AS totalAmount
             FROM payments
             WHERE isActive = 1
             `,
-            {
-                type: QueryTypes.SELECT,
-                plain: true
-            }
-        ),
+                {
+                    type: QueryTypes.SELECT,
+                    plain: true
+                }
+            ),
 
-        sequelize.query<{ totalOrder: number }>(
-            `
+            sequelize.query<{ totalOrder: number }>(
+                `
             SELECT COUNT(*) AS totalOrder
             FROM orders
             WHERE isActive = 1
             AND status IN ('pending', 'confirmed', 'shipped', 'delivered')
             `,
-            {
-                type: QueryTypes.SELECT,
-                plain: true
-            }
-        ),
+                {
+                    type: QueryTypes.SELECT,
+                    plain: true
+                }
+            ),
 
-        sequelize.query<{ totalProduct: number }>(
-            `
+            sequelize.query<{ totalProduct: number }>(
+                `
             SELECT COUNT(*) AS totalProduct
             FROM products
             WHERE isActive = 1
             `,
-            {
-                type: QueryTypes.SELECT,
-                plain: true
-            }
-        ),
+                {
+                    type: QueryTypes.SELECT,
+                    plain: true
+                }
+            ),
 
-        sequelize.query<{ totalUser: number }>(
-            `
+            sequelize.query<{ totalUser: number }>(
+                `
             SELECT COUNT(*) AS totalUser
             FROM users
             WHERE status = 1
             `,
-            {
-                type: QueryTypes.SELECT,
-                plain: true
-            }
-        ),
+                {
+                    type: QueryTypes.SELECT,
+                    plain: true
+                }
+            ),
 
-        sequelize.query<{
-            id: number;
-            order_status: string;
-            total_amount: number;
-            created_at: Date;
-            name: string;
-        }>(
-            `
+            sequelize.query<{
+                id: number;
+                order_status: string;
+                total_amount: number;
+                created_at: Date;
+                name: string;
+            }>(
+                `
             SELECT 
                 orders.id AS id,
                 orders.status AS order_status,
@@ -238,17 +282,17 @@ class AuthService {
 
             LIMIT 5
             `,
-            {
-                type: QueryTypes.SELECT
-            }
-        ),
+                {
+                    type: QueryTypes.SELECT
+                }
+            ),
 
-        sequelize.query<{
-            productId: number;
-            totalSales: number;
-            stock: number;
-        }>(
-            `
+            sequelize.query<{
+                productId: number;
+                totalSales: number;
+                stock: number;
+            }>(
+                `
             SELECT 
                 productId,
 
@@ -273,23 +317,23 @@ class AuthService {
 
             LIMIT 5
             `,
-            {
-                type: QueryTypes.SELECT
-            }
-        )
-    ]);
+                {
+                    type: QueryTypes.SELECT
+                }
+            )
+        ]);
 
-    return {
-        totalAmount: Number(totalAmount?.totalAmount ?? 0),
-        totalOrder: totalOrder?.totalOrder ?? 0,
-        totalProduct: totalProduct?.totalProduct ?? 0,
-        totalUser: totalUser?.totalUser ?? 0,
+        return {
+            totalAmount: Number(totalAmount?.totalAmount ?? 0),
+            totalOrder: totalOrder?.totalOrder ?? 0,
+            totalProduct: totalProduct?.totalProduct ?? 0,
+            totalUser: totalUser?.totalUser ?? 0,
 
-        recentOrders,
+            recentOrders,
 
-        topSellingProducts
-    };
-}
+            topSellingProducts
+        };
+    }
 }
 
 export default AuthService;

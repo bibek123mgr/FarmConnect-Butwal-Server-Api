@@ -65,6 +65,12 @@ export class User extends Model {
     })
     declare password: string;
 
+    @Column({
+        type: DataType.STRING,
+        allowNull: true,
+    })
+    declare googleId: string;
+
     @Default(UserRole.USER)
     @Column({
         type: DataType.ENUM(...Object.values(UserRole)),
