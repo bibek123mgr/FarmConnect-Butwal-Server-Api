@@ -5,6 +5,7 @@ import FarmController from '../controllers/farmer/FarmController';
 import { Auth } from '../middlewares/Auth';
 import FarmValidation from '../validations/FarmValidation';
 import { validate } from '../utils/validation.middleware';
+import FarmRedisMiddleware from '../middlewares/FarmRedisMiddleware';
 
 // router
 //     .route("/farms")
@@ -16,6 +17,13 @@ import { validate } from '../utils/validation.middleware';
 router
     .route("/register")
     .post(Auth, validate(FarmValidation.createFarmSchema), FarmController.create);
+
+router
+    .route("/top-farms")
+    .get(
+        FarmRedisMiddleware.getTopFarms(),
+        FarmController.getTopFarms);
+
 
 
 // router

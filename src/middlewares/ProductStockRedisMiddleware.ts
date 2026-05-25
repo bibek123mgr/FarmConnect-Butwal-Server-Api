@@ -12,9 +12,9 @@ class ProductStockRedisMiddleware {
     getCachedProductStock() {
         return asyncHandler(
             async (req: ProductRequest, res: Response, next: NextFunction) => {
-                
-            const data = (req as ProductRequest).query;                
-            const {
+
+                const data = (req as ProductRequest).query;
+                const {
                     productname,
                     category,
                     page = 1,
@@ -22,7 +22,7 @@ class ProductStockRedisMiddleware {
                     pricerangeFrom,
                     pricerangeTo
                 } = data;
-                
+
                 const cacheKey = `products:stock:page=${page}:limit=${limit}:name=${productname || "all"}:category=${category || "all"}:from=${pricerangeFrom || 0}:to=${pricerangeTo || "max"}`;
                 const cachedData = await redisClient.get(cacheKey);
 
@@ -38,6 +38,27 @@ class ProductStockRedisMiddleware {
             }
         );
     }
+
+    getCachedTopSellingProductStock() {
+        return asyncHandler(
+            async (_req: ProductRequest, res: Response, next: NextFunction) => {
+
+                const cacheKey = `products:topsellingproducts`;
+                const cachedData = await redisClient.get(cacheKey);
+
+                if (cachedData) {
+                    return res.status(200).json({
+                        status: true,
+                        message: "Top selling products fetched successfully",
+                        data: JSON.parse(cachedData),
+                    });
+                }
+
+                return next();
+            }
+        );
+    }
+
 
     clearProductStockCache() {
         return asyncHandler(

@@ -44,6 +44,15 @@ class ProductController {
         });
     });
 
+    static getTopSellingProducts = asyncHandler(async (_req: AuthRequest, res: Response) => {
+        const products = await ProductService.getTopSellingProducts();
+        return res.status(200).json({
+            status: true,
+            message: "Top selling products fetched successfully",
+            data: products,
+        });
+    });
+
     static getAllMyProducts = asyncHandler(async (req: AuthRequest, res: Response) => {
         const userId = req.user!.id
         const data = req.query

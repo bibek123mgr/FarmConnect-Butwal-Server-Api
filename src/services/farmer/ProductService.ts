@@ -187,6 +187,54 @@ class ProductService {
         return products;
     }
 
+    static async getTopSellingProducts() {
+        const products = await sequelize.query(`
+        SELECT 
+            t.id, 
+            t.name, 
+            t.description, 
+            t.unit, 
+            t.rate, 
+            t.farmId, 
+            t.categoryId,
+            t.image,
+            t.farmName, 
+            t.categoryName,
+            t.quantity
+                FROM (
+                    SELECT
+                        p.id, 
+                        p.name, 
+                        p.description, 
+                        p.unit, 
+                        COALESCE(pp.price, p.rate) AS rate, 
+                        p.farmId, 
+                        p.categoryId,
+                        p.image,
+                        f.farmName, 
+                        c.name AS categoryName,
+                        COALESCE(SUM(
+                            a.openingStock + a.production - a.sales + a.salesReturn 
+                            - a.damage - a.chalan + a.chalanReturn - a.reserveQuantity
+                        ), 0) AS quantity,
+
+                        COALESCE(SUM(a.sales - a.salesReturn), 0) AS totalSold
+
+                    FROM products p 
+                    INNER JOIN actual_stock a ON p.id = a.productId
+                    INNER JOIN farms f ON p.farmId = f.id
+                    INNER JOIN categories c ON p.categoryId = c.id
+                    LEFT JOIN product_prices pp ON p.id = pp.productId
+
+                    GROUP BY p.id
+                    ORDER BY totalSold DESC
+                    LIMIT 5
+        ) t
+    `);
+
+        await redisClient.set("products:topsellingproducts", JSON.stringify(products[0]), "EX", 600);
+        return products[0];
+    }
     static async getAllMyProducts(data: IGetAdminProductFilter) {
         let {
             productname,
@@ -315,7 +363,7 @@ class ProductService {
     }
 
     static async updateProduct(id: number, data: Partial<CreateProductDTO>) {
-        
+
         const transcation = await sequelize.transaction();
         try {
             const product = await Product.findByPk(id);

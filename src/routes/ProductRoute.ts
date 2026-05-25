@@ -22,7 +22,12 @@ router
         productStockRedisMiddleware.getCachedProductStock(),
         ProductController.getAll
     );
-
+router
+    .route("/products/top-selling")
+    .get(
+        productStockRedisMiddleware.getCachedTopSellingProductStock(),
+        ProductController.getTopSellingProducts
+    );
 
 router
     .route("/products/my")
@@ -31,6 +36,7 @@ router
         validate(ProductValidation.getAllProductForAdmin),
         ProductController.getAllMyProducts
     );
+
 router
     .route("/products/:id")
     .put(

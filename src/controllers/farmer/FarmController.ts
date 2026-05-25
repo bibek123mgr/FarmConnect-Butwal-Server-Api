@@ -29,6 +29,15 @@ class FarmController {
         });
     });
 
+    static getTopFarms = asyncHandler(async (_req: Request, res: Response) => {
+        const farms = await FarmService.getTopFarms();
+        return res.status(200).json({
+            status: true,
+            message: "Top farms fetched successfully",
+            data: farms,
+        });
+    });
+
     static getById = asyncHandler(async (req: Request, res: Response) => {
         const id = Number(req.params.id);
 

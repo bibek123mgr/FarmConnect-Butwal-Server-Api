@@ -1,5 +1,8 @@
+import { QueryTypes } from "sequelize";
+import sequelize from "../../config/database";
 import Farm from "../../models/FarmModel";
 import { NotFoundError } from "../../utils/errors";
+import redisClient from "../../redis/redis";
 
 export interface ICreateFarm {
     userId: number;
@@ -48,6 +51,34 @@ class FarmService {
             where: { isActive: true },
             order: [["createdAt", "DESC"]],
         });
+    }
+    static async getTopFarms() {
+        const farms = await sequelize.query(`
+            SELECT 
+                id,
+                a.farmName,
+                a.description,
+                a.address as address
+                from(
+                    SELECT 
+                        a.id,
+                        a.farmName,
+                        a.description,
+                        CONCAT(a.province, ' ',a.district, ' ',a.address) as address,
+                        SUM(b.totalAmount) as totalAmount
+                    from farms a
+                    LEFT JOIN vendor_orders b ON a.id=b.farmId
+                    WHERE a.isActive=1 AND b.isActive=1
+                    group by a.id
+                    order by totalAmount DESC
+                    limit 6
+                ) AS a`,
+            {
+                type: QueryTypes.SELECT,
+            })
+
+        await redisClient.set("farms:topfarms", JSON.stringify(farms), "EX", 600);
+        return farms;
     }
 
     static async getFarmById(id: number) {
