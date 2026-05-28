@@ -6,10 +6,12 @@ import {
     ForeignKey,
     BelongsTo,
     Default,
+    HasMany,
 } from "sequelize-typescript";
 import User from "./UserModel";
 import Farm from "./FarmModel";
 import Category from "./CategoryModel";
+import OrderItem from "./OrderItemModel";
 
 @Table({
     tableName: "products",
@@ -95,6 +97,9 @@ export class Product extends Model {
         type: DataType.BOOLEAN,
     })
     declare isActive: boolean;
+
+    @HasMany(() => OrderItem)
+    orderItems!: OrderItem[]
 }
 
 export default Product;

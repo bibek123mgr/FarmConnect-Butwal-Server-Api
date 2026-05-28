@@ -1,5 +1,5 @@
 import express, { NextFunction, Request, Response } from "express";
-import { AuthRoute, CartRoute, CommentRoute, DamageRoute, FarmRoute, NotificationRoute, OrderRoute, ProductCategoryRoute, ProductionRoute, ProductPriceRoute, ProductRoute, UserRoute } from "./routes/index";
+import { AuthRoute, CartRoute, CommentRoute, DamageRoute, FarmRoute, NotificationRoute, OrderRoute, ProductCategoryRoute, ProductionRoute, ProductPriceRoute, ProductRoute, recommendationRoute, UserRoute } from "./routes/index";
 import { config } from "./config/index";
 import { errorHandler } from "./utils/error.middleware";
 import { rateLimit } from "express-rate-limit";
@@ -43,6 +43,7 @@ app.get("/", (_req: Request, res: Response) => {
 app.use("/api/auth", AuthRoute);
 app.use("/api/farmers", FarmRoute);
 app.use("/api",
+    recommendationRoute,
     UserRoute,
     ProductRoute,
     CommentRoute,

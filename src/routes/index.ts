@@ -10,6 +10,7 @@ import ProductPriceRoute from "./ProductPriceRoute";
 import CommentRoute from "./CommentRoute";
 import NotificationRoute from "./NotificationRoute";
 import UserRoute from "./UserRoute";
+import recommendationRoute from "./recommendationRoutes";
 export {
     AuthRoute,
     FarmRoute,
@@ -22,5 +23,6 @@ export {
     ProductPriceRoute,
     CommentRoute,
     NotificationRoute,
-    UserRoute
+    UserRoute,
+    recommendationRoute
 }

@@ -8,11 +8,13 @@ import {
     IsEmail,
     BeforeCreate,
     BeforeUpdate,
-    HasOne
+    HasOne,
+    HasMany
 } from "sequelize-typescript";
 import bcrypt from "bcrypt";
 import { config } from "../config/index";
 import Farm from "./FarmModel";
+import OrderItem from "./OrderItemModel";
 
 const BCRYPT_SALT = parseInt(config.BCRYPT_SALT as string) || 10;
 
@@ -88,6 +90,9 @@ export class User extends Model {
     })
     declare status: boolean;
 
+    @HasMany(() => OrderItem)
+    orderItems!: OrderItem[]
+
     @BeforeCreate
     static async hashPassword(instance: User) {
         if (instance.password) {
@@ -102,7 +107,7 @@ export class User extends Model {
         }
     }
 
-  
+
     toJSON() {
         const values = Object.assign({}, this.get());
         delete values.password;
