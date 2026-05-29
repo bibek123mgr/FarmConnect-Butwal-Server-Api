@@ -1,6 +1,9 @@
+import { Sequelize } from "sequelize-typescript";
 import Category from "../../models/CategoryModel";
+import Product from "../../models/ProductModel";
 import redisClient from "../../redis/redis";
 import { NotFoundError } from "../../utils/errors";
+import OrderItem from "../../models/OrderItemModel";
 
 export interface ICreateCategory {
     name: string;
@@ -33,20 +36,20 @@ class ProductCategoryService {
     static async getAllCategories() {
         const categories = await Category.findAll({
             where: { isActive: true },
-            attributes: ["id", "name","image"],
+            attributes: ["id", "name", "image"],
             order: [["sortOrder", "ASC"]],
         });
         await redisClient.set("categories:all", JSON.stringify(categories));
         return categories;
     }
 
-      static async getAllMyCategories() {
+    static async getAllMyCategories() {
         const categories = await Category.findAll({
             where: { isActive: true },
             attributes: ["id", "name", "slug", "image", "sortOrder"],
             order: [["sortOrder", "ASC"]],
         });
-      
+
         return categories;
     }
 
@@ -83,6 +86,82 @@ class ProductCategoryService {
         await category.update({ isActive: false });
 
         return true;
+    }
+
+    static async stats() {
+        const [
+            activeCategories,
+            totalCategories,
+            topProductCategory,
+            topSellingCategory
+        ] = await Promise.all([
+            Category.count({ where: { isActive: true } }),
+            Category.count(),
+            Product.findAll({
+                attributes: [
+                    "categoryId",
+                    [Sequelize.fn("COUNT", Sequelize.col("Product.id")), "productCount"],
+                ],
+                include: [
+                    {
+                        model: Category,
+                        attributes: ["id", "name"],
+                    },
+                ],
+                group: ["categoryId"],
+                order: [[Sequelize.literal("productCount"), "DESC"]],
+                limit: 1,
+            }),
+            await OrderItem.findAll({
+                attributes: [
+                    [Sequelize.col("product.categoryId"), "categoryId"],
+                    [Sequelize.fn("SUM", Sequelize.col("OrderItem.quantity")), "totalSold"],
+                ],
+                include: [
+                    {
+                        model: Product,
+                        attributes: ["categoryId"],
+                        include: [
+                            {
+                                model: Category,
+                                attributes: ["id", "name"],
+                            },
+                        ],
+                    },
+                ],
+                group: ["product.categoryId", "product->category.id"],
+                order: [[Sequelize.literal("totalSold"), "DESC"]],
+                limit: 1,
+            })
+    ]);
+
+        const topCategoryByProduct = topProductCategory[0];
+        const topCategoryBySales = topSellingCategory[0];
+
+        return {
+            categories: {
+                total: totalCategories,
+                active: activeCategories,
+            },
+
+            topProductCategory: topCategoryByProduct
+                ? {
+                    categoryId: topCategoryByProduct.categoryId,
+                    name: (topCategoryByProduct as any).category.name,
+                    productCount: Number(
+                        (topCategoryByProduct as any).get("productCount")
+                    ),
+                }
+                : null,
+
+            topSellingCategory: topCategoryBySales
+                ? {
+                    categoryId: topCategoryBySales.get("categoryId"),
+                    name: (topCategoryBySales as any).product.category.name,
+                    totalSold: Number(topCategoryBySales.get("totalSold")),
+                }
+                : null,
+        };
     }
 }
 

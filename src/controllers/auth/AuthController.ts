@@ -5,7 +5,7 @@ import redisClient from "../../redis/redis";
 import JwtHelper from "../../helper/jwtHepler";
 import { AuthRequest } from "../../middlewares/Auth";
 import { config } from "../../config/index"
-import {OAuth2Client} from "google-auth-library";
+import { OAuth2Client } from "google-auth-library";
 const googleClient = new OAuth2Client(config.GOOGLEOAUTH_CLIENT_ID!);
 
 class AuthController {
@@ -158,12 +158,10 @@ class AuthController {
 
     static logout = asyncHandler(async (req: AuthRequest, res: Response) => {
         const userId = req.user?.id;
-        if (userId) {
-            await redisClient.del(`refresh-token:users:${userId}`);
-        }
         res.clearCookie("accessToken");
         res.clearCookie("refreshToken");
         await redisClient.del(`refresh-token:users:${userId}`);
+        await redisClient.del(`user:profile:${userId}`);
         return res.status(200).json({
             status: true,
             message: "Logout successful"

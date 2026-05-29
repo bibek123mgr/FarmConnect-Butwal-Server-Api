@@ -54,6 +54,15 @@ class ProductCategoryController {
             message: "Category deleted successfully",
         });
     });
+
+    static stats = asyncHandler(async (_req: Request, res: Response) => {
+        const data = await ProductCategoryService.stats();
+        return res.status(200).json({
+            status: true,
+            message: "Category deleted successfully",
+            data
+        });
+    });
 }
 
 export default ProductCategoryController;

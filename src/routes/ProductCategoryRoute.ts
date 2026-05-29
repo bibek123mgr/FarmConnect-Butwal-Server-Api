@@ -8,7 +8,7 @@ import ProductCategoryController from "../controllers/admin/ProductCategoryContr
 import { Auth } from "../middlewares/Auth";
 import ProductCategoryRedisMiddleware from "../middlewares/ProductCategoryRedisMiddleware.";
 
-const productCategoryRedisMiddleware= new ProductCategoryRedisMiddleware();
+const productCategoryRedisMiddleware = new ProductCategoryRedisMiddleware();
 
 router
     .route("/categories")
@@ -19,7 +19,10 @@ router
         ProductCategoryController.create
     )
     .get(
-        productCategoryRedisMiddleware.getCachedProductCategory(),ProductCategoryController.getAll);
+        productCategoryRedisMiddleware.getCachedProductCategory(), ProductCategoryController.getAll);
+
+router.get("/categories/stats",
+    Auth, ProductCategoryController.stats);
 
 router
     .route("/categories/:id")
@@ -31,7 +34,7 @@ router
         ProductCategoryController.update
     )
     .delete(
-        Auth, 
-        productCategoryRedisMiddleware.clearProductCategoryCache(),ProductCategoryController.delete);
+        Auth,
+        productCategoryRedisMiddleware.clearProductCategoryCache(), ProductCategoryController.delete);
 
 export default router;
