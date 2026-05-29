@@ -215,6 +215,79 @@ class RecommendationController {
             } as RecommendationResponse);
         }
     }
+
+
+    async getMarketBasketAnalysis(req: Request, res: Response): Promise<void> {
+        try {
+            const productId = Array.isArray(req.params.productId)
+                ? req.params.productId[0]
+                : req.params.productId;
+             const { limit = '5' } = req.query;
+
+            if (!productId || isNaN(Number(productId))) {
+                res.status(400).json({
+                    success: false,
+                    error: 'Valid productId is required',
+                });
+                return;
+            }
+
+            const result = await collaborativeFilteringService.getMarketBasketAnalysis(
+                    parseInt(productId),
+                    parseInt(limit as string)
+                )
+              
+
+            res.json({
+                success: true,
+                data: result,
+            });
+        } catch (error) {
+            console.error('Error in getMarketBasketAnalysis:', error);
+            res.status(500).json({
+                success: false,
+                error: error instanceof Error ? error.message : 'Internal server error',
+            });
+        }
+    }
+
+    /**
+  * GET /api/products/:productId/association-rules
+  * Get detailed association rules for a product
+  */
+    async getAssociationRules(req: Request, res: Response): Promise<void> {
+        try {
+            const productId = Array.isArray(req.params.productId)
+                ? req.params.productId[0]
+                : req.params.productId;
+            const { limit = '5' } = req.query;
+
+            if (!productId || isNaN(Number(productId))) {
+                res.status(400).json({
+                    success: false,
+                    error: 'Valid productId is required',
+                });
+                return;
+            }
+
+            const result = await collaborativeFilteringService.getAssociationRules(
+                parseInt(productId),
+                parseInt(limit as string)
+            );
+
+            res.json({
+                success: true,
+                data: result,
+            });
+        } catch (error) {
+            console.error('Error in getAssociationRules:', error);
+            res.status(500).json({
+                success: false,
+                error: error instanceof Error ? error.message : 'Internal server error',
+            });
+        }
+    }
+
 }
 
 export default new RecommendationController();

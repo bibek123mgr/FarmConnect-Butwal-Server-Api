@@ -6,6 +6,12 @@ import recommendationController from '../controllers/RecommendationController';
 const router = Router();
 
 /**
+ * ═══════════════════════════════════════════════════════════════════
+ * COLLABORATIVE FILTERING ROUTES
+ * ═══════════════════════════════════════════════════════════════════
+ */
+
+/**
  * GET /api/recommendations/:userId
  * Get collaborative filtering recommendations for a specific user
  * 
@@ -33,16 +39,37 @@ router.get(
 );
 
 /**
- * POST /api/recommendations/compare-users
- * Compare similarity between two users
- * 
- * Body:
- *   - userId1: number
- *   - userId2: number
+ * ═══════════════════════════════════════════════════════════════════
+ * MARKET BASKET ANALYSIS ROUTES
+ * ═══════════════════════════════════════════════════════════════════
  */
-router.post(
-  '/recommendations/compare-users',
-  (req: Request, res: Response) => recommendationController.compareUsers(req, res)
+
+/**
+ * GET /api/products/:productId/market-basket-analysis
+ * Market Basket Analysis - Find frequently bought together products
+ * 
+ * Query Parameters:
+ *   - limit (optional): Number of recommendations (default: 5)
+ *   - optimized (optional): Use optimized SQL query (default: false)
+ * 
+ * Example: /api/products/5/market-basket-analysis?limit=8&optimized=true
+ */
+router.get(
+  '/products/:productId/market-basket-analysis',
+  (req: Request, res: Response) =>
+    recommendationController.getMarketBasketAnalysis(req, res)
+);
+
+/**
+ * GET /api/products/:productId/association-rules
+ * Get detailed association rules with Confidence, Support, and Lift metrics
+ * 
+ * Example: /api/products/5/association-rules?limit=5
+ */
+router.get(
+  '/products/:productId/association-rules',
+  (req: Request, res: Response) =>
+    recommendationController.getAssociationRules(req, res)
 );
 
 export default router;
