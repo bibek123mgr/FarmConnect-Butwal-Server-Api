@@ -11,6 +11,7 @@ import CommentRoute from "./CommentRoute";
 import NotificationRoute from "./NotificationRoute";
 import UserRoute from "./UserRoute";
 import recommendationRoute from "./recommendationRoutes";
+import VendorRoute from "./VendorRoute";
 export {
     AuthRoute,
     FarmRoute,
@@ -24,5 +25,6 @@ export {
     CommentRoute,
     NotificationRoute,
     UserRoute,
-    recommendationRoute
+    recommendationRoute,
+    VendorRoute
 }
