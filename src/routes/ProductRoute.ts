@@ -38,6 +38,13 @@ router
     );
 
 router
+    .route("/products/stats")
+    .get(
+        Auth,
+        ProductController.getStats
+    );
+
+router
     .route("/products/:id")
     .put(
         Auth,

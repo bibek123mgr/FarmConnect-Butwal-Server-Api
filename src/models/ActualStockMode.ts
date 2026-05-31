@@ -20,6 +20,9 @@ export class ActualStock extends Model {
     })
     declare productId: number;
 
+    @BelongsTo(() => Product)
+    product!: Product;
+
     @Column({
         type: DataType.DECIMAL(10, 2),
         defaultValue: 0,

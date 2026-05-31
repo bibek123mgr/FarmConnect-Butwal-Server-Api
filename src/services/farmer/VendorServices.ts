@@ -79,6 +79,22 @@ class VendorServices {
             totalPages: Math.ceil(count / limit),
         };
     }
+
+    static async getStats() {
+        const [total, active, inactive, verified] = await Promise.all([
+            Farm.count(),
+            Farm.count({ where: { isActive: true } }),
+            Farm.count({ where: { isActive: false } }),
+            Farm.count({ where: { isVerified: true } })
+        ])
+
+        return {
+            totalVendors: total,
+            activerVendors: active,
+            inactiveVendors: inactive,
+            verifiedVendors: verified
+        }
+    }
 }
 
 export default VendorServices

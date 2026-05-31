@@ -7,4 +7,8 @@ router
     .route("/vendors")
     .get(Auth, VendorController.getAllVendors)
 
+router
+    .route("/vendors/stats")
+    .get(Auth, VendorController.getStats)
+
 export default router

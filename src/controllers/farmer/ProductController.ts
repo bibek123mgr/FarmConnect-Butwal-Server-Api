@@ -100,6 +100,15 @@ class ProductController {
             message: "Product deleted successfully",
         });
     });
+
+    static getStats = asyncHandler(async (_req: Request, res: Response) => {
+        const data = await ProductService.getStats();
+        return res.status(200).json({
+            status: true,
+            message: "Stats fetched successfully",
+            data
+        });
+    });
 }
 
 export default ProductController;

@@ -6,7 +6,7 @@ import { comesFrom, Stock } from "../../models/StockModel";
 import { BadRequestError, NotFoundError } from "../../utils/errors";
 import Category from "../../models/CategoryModel";
 import redisClient from "../../redis/redis";
-import { QueryTypes } from "sequelize";
+import { Op, QueryTypes } from "sequelize";
 import ActualStock from "../../models/ActualStockMode";
 
 interface CreateProductDTO {
@@ -235,6 +235,7 @@ class ProductService {
         await redisClient.set("products:topsellingproducts", JSON.stringify(products[0]), "EX", 600);
         return products[0];
     }
+
     static async getAllMyProducts(data: IGetAdminProductFilter) {
         let {
             productname,
@@ -286,13 +287,11 @@ class ProductService {
                 - a.damage - a.chalan + a.chalanReturn - a.reserveQuantity
             ), 0) AS quantity
         FROM products p 
-        INNER JOIN actual_stock a ON p.id = a.productId
+        LEFT JOIN actual_stock a ON p.id = a.productId
         INNER JOIN farms f ON p.farmId = f.id
-        INNER JOIN categories c ON p.categoryId = c.id
+        LEFT JOIN categories c ON p.categoryId = c.id
         LEFT JOIN product_prices pp ON p.id = pp.productId
-        
         ${whereConditions}
-
         GROUP BY p.id
         ORDER BY p.id DESC
         LIMIT :limit OFFSET :offset
@@ -449,6 +448,64 @@ class ProductService {
             return true;
         } catch (error) {
             await t.rollback();
+            throw error;
+        }
+    }
+
+    static async getStats() {
+        try {
+            const stockExpression = Sequelize.literal(`
+            openingStock
+            + production
+            - sales
+            + salesReturn
+            - damage
+            - chalan
+            + chalanReturn
+            - reserveQuantity
+        `);
+
+            const [
+                totalProducts,
+                totalActiveProducts,
+                totalOutOfStockProduct,
+                totalLowStockProduct
+            ] = await Promise.all([
+                Product.count(),
+                Product.count({ where: { isActive: true } }),
+
+                ActualStock.count({
+                    where: Sequelize.where(stockExpression, { [Op.lte]: 0 }),
+                    include: [
+                        {
+                            model: Product,
+                            attributes: [],
+                            where: { isActive: true },
+                            required: true,
+                        },
+                    ],
+                }),
+
+                ActualStock.count({
+                    where: Sequelize.where(stockExpression, { [Op.lte]: 10 }),
+                    include: [
+                        {
+                            model: Product,
+                            attributes: [],
+                            where: { isActive: true },
+                            required: true,
+                        },
+                    ],
+                }),
+            ]);
+
+            return {
+                totalProducts,
+                totalActiveProducts,
+                totalOutOfStockProduct,
+                totalLowStockProduct,
+            };
+        } catch (error) {
             throw error;
         }
     }

@@ -1,4 +1,4 @@
-import VendorServices, { IVendorPagination } from "../../services/farmer/VendorServices";
+import VendorServices from "../../services/farmer/VendorServices";
 import { asyncHandler } from "../../utils/asyncHandler";
 import { Request, Response } from "express";
 
@@ -18,6 +18,15 @@ class VendorController {
             ...data
         });
     })
+
+    static async getStats(_req: Request, res: Response) {
+        const data = await VendorServices.getStats();
+        return res.status(200).json({
+            status: true,
+            message: "Stats fetched successfully",
+            data
+        });
+    }
 }
 
 export default VendorController;
