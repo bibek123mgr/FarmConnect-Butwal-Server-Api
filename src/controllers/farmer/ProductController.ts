@@ -109,6 +109,15 @@ class ProductController {
             data
         });
     });
+
+    static getAllMyProductForCombobox = asyncHandler(async (req: AuthRequest, res: Response) => {
+        const userId = req.user!.id
+        const products = await ProductService.getAllMyProductForCombobox(userId);
+        return res.status(200).json({
+            status: true,
+            data: products,
+        });
+    });
 }
 
 export default ProductController;

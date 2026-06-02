@@ -8,9 +8,9 @@ class ProductionController {
     static create = asyncHandler(async (req: AuthRequest, res: Response) => {
         await ProductionService.createProduction({
             productId: req.body.productId,
-            farmId: req.body.farmId,
+            farmId: req.user!.farmId!,
             quantity: req.body.quantity,
-            costPerUnit: req.body.costPerUnit,
+            costPerUnit: req.body.rate,
             remarks: req.body.remarks,
             userId: req.user!.id
         });
@@ -22,7 +22,14 @@ class ProductionController {
     });
 
     static update = asyncHandler(async (req: Request, res: Response) => {
-        await ProductionService.updateProduction(Number(req.params.id), req.body);
+        const data = {
+            productId: req.body.productId,
+            quantity: req.body.quantity,
+            costPerUnit: req.body.rate,
+            remarks: req.body.remarks,
+        }
+
+        await ProductionService.updateProduction(Number(req.params.id), data);
 
         res.status(200).json({
             status: true,
@@ -35,7 +42,7 @@ class ProductionController {
 
         res.status(200).json({
             status: true,
-            data
+            ...data
         });
     });
 
@@ -54,6 +61,16 @@ class ProductionController {
         res.status(200).json({
             status: true,
             message: "Production deleted successfully"
+        });
+    });
+
+    static stats = asyncHandler(async (req: AuthRequest, res: Response) => {
+        const userId = req.user!.id
+        const data = await ProductionService.stats(userId);
+        return res.status(200).json({
+            status: true,
+            message: "Stats fetched successfully",
+            data
         });
     });
 }

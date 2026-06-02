@@ -5,9 +5,8 @@ class ProductionValidation {
 
     static create = Joi.object({
         productId: BaseValidation.getPositiveNumber("Product is required"),
-        farmId: BaseValidation.getPositiveNumber("Farm is required"),
         quantity: BaseValidation.getPositiveNumber("Quantity must be greater than 0"),
-        costPerUnit: BaseValidation.getOptionalNumber(),
+        rate: BaseValidation.getOptionalNumber(),
         remarks: BaseValidation.getOptionalString()
     });
 

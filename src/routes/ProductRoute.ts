@@ -43,6 +43,13 @@ router
         Auth,
         ProductController.getStats
     );
+router
+    .route("/products/combobox")
+    .get(
+        Auth,
+        ProductController.getAllMyProductForCombobox
+    );
+
 
 router
     .route("/products/:id")

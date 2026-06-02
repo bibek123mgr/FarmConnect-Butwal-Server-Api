@@ -509,6 +509,19 @@ class ProductService {
             throw error;
         }
     }
+
+    static async getAllMyProductForCombobox(userId: number) {
+        const products = await Product.findAll({
+            attributes: ["id", "name","unit"],
+            where: {
+                farmerId: userId,
+                isActive: true
+            },
+            order: [["name", "ASC"]]
+        });
+
+        return products;
+    }
 }
 
 export default ProductService;

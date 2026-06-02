@@ -20,13 +20,10 @@ class ProductionService {
 
     static async createProduction(data: CreateProductionDTO) {
         const t = await sequelize.transaction();
-
+        console.log(data);
         try {
             const product = await Product.findByPk(data.productId, { transaction: t });
             if (!product) throw new NotFoundError("Product not found");
-
-            const farm = await Farm.findByPk(data.farmId, { transaction: t });
-            if (!farm) throw new NotFoundError("Farm not found");
 
             const production = await Production.create({
                 productId: data.productId,
@@ -43,8 +40,7 @@ class ProductionService {
                 },
                 {
                     where: {
-                        productId: data.productId,
-                        farmId: data.farmId
+                        productId: data.productId
                     },
                     transaction: t
                 }
@@ -89,7 +85,6 @@ class ProductionService {
 
             await production.update({
                 productId: data.productId,
-                farmId: data.farmId,
                 quantity: newQuantity,
                 costPerUnit: newCost,
                 remarks: data.remarks
@@ -101,8 +96,7 @@ class ProductionService {
                 },
                 {
                     where: {
-                        productId: data.productId,
-                        farmId: data.farmId
+                        productId: data.productId
                     },
                     transaction: t
                 }
@@ -134,8 +128,15 @@ class ProductionService {
     }
 
     static async getAllProductions(userId: number) {
-        return await Production.findAll({
-            where: { userId, isActive: true },
+        const page = 1;
+        const limit = 10;
+        const offset = (page - 1) * limit;
+
+        const { count, rows } = await Production.findAndCountAll({
+            where: {
+                userId,
+                isActive: true
+            },
             attributes: [
                 "id",
                 "productId",
@@ -148,12 +149,32 @@ class ProductionService {
                 "createdAt"
             ],
             include: [
-                { model: Product, attributes: [] },
-                { model: Farm, attributes: [] }
+                {
+                    model: Product,
+                    attributes: [],
+                    required: true
+                },
+                {
+                    model: Farm,
+                    attributes: [],
+                    required: true
+                }
             ],
+            limit,
+            offset,
             order: [["createdAt", "DESC"]],
             raw: true
         });
+
+        return {
+            data: rows,
+            pagination: {
+                total: count,
+                page,
+                limit,
+                totalPages: Math.ceil(count / limit)
+            }
+        };
     }
 
     static async getProductionById(id: number) {
@@ -193,12 +214,52 @@ class ProductionService {
             },
             {
                 where: {
-                    productId: production.productId,
-                    farmId: production.farmId
+                    productId: production.productId
                 }
             }
         );
         await Stock.update({ isActive: false }, { where: { tableId: id, comesFrom: comesFrom.PRODUCTION } });
+    }
+
+    static async stats(userId: number) {
+        const [totalProductions, totalQuantity, costResult]: any = await Promise.all([
+            Production.count({
+                where: {
+                    userId,
+                    isActive: true,
+                },
+            }),
+
+            Production.sum("quantity", {
+                where: {
+                    userId,
+                    isActive: true,
+                },
+            }),
+
+            Production.findOne({
+                where: {
+                    userId,
+                    isActive: true,
+                },
+                attributes: [
+                    [
+                        Sequelize.fn(
+                            "SUM",
+                            Sequelize.literal("quantity * costPerUnit")
+                        ),
+                        "totalCost",
+                    ],
+                ],
+                raw: true,
+            }),
+        ]);
+
+        return {
+            totalProductions,
+            totalQuantity: Number(totalQuantity || 0),
+            totalCost: Number(costResult?.totalCost || 0),
+        };
     }
 }
 

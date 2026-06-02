@@ -17,6 +17,11 @@ router
     .get(ProductionController.getAll);
 
 router
+    .route("/productions/stats")
+    .get(ProductionController.stats);
+
+
+router
     .route("/productions/:id")
     .put(
         validate(ProductionValidation.create),
