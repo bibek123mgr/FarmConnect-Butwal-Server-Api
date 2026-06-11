@@ -20,7 +20,6 @@ class ProductionService {
 
     static async createProduction(data: CreateProductionDTO) {
         const t = await sequelize.transaction();
-        console.log(data);
         try {
             const product = await Product.findByPk(data.productId, { transaction: t });
             if (!product) throw new NotFoundError("Product not found");

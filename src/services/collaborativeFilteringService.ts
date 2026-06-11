@@ -86,10 +86,6 @@ export interface MarketBasketProduct {
     image: string;
     rating: number;
     stock: number;
-    coOccurrenceCount: number;      // |Orders with A AND B|
-    coOccurrenceFrequency: number;  // Co-purchase Frequency(A,B)
-    confidence: number;              // Confidence(A→B) in percentage
-    support: number;                 // Support(A→B) in percentage
 }
 
 export interface MarketBasketAnalysisResult {
@@ -120,7 +116,6 @@ export interface AssociationRulesResult {
     productId: number;
     productName: string;
     totalTransactions: number;
-    associationRules: AssociationRule[];
 }
 class CollaborativeFilteringService {
 
@@ -442,7 +437,7 @@ class CollaborativeFilteringService {
                 where: {
                     id: { [Op.in]: topProductIds },
                 },
-                attributes: ['id', 'name', 'description', 'unit','image', 'rate', 'quantity'],
+                attributes: ['id', 'name', 'description', 'unit', 'image', 'rate', 'quantity'],
                 raw: true,
             });
 
@@ -643,18 +638,13 @@ class CollaborativeFilteringService {
     async getMarketBasketAnalysis(
         productId: number,
         limit: number = 5
-    ): Promise<MarketBasketAnalysisResult> {
+    ): Promise<MarketBasketProduct[] | null> {
         try {
             const startTime = Date.now();
-
-            console.log(`\n${'═'.repeat(80)}`);
-            console.log(`📊 MARKET BASKET ANALYSIS - PURE JAVASCRIPT IMPLEMENTATION`);
-            console.log(`${'═'.repeat(80)}\n`);
 
             // ─────────────────────────────────────────────────────────
             // STEP 1: Fetch main product
             // ─────────────────────────────────────────────────────────
-            console.log(`[STEP 1] Fetching product ${productId}...`);
 
             const mainProduct = await Product.findByPk(productId, {
                 attributes: ['id', 'name', 'unit', 'image', 'rate', 'quantity'],
@@ -664,12 +654,9 @@ class CollaborativeFilteringService {
                 throw new Error(`Product ${productId} not found`);
             }
 
-            console.log(`✅ Product: ${mainProduct.name}\n`);
-
             // ─────────────────────────────────────────────────────────
             // STEP 2: Fetch ALL orders containing this product
             // ─────────────────────────────────────────────────────────
-            console.log(`[STEP 2] Fetching all orders with this product...`);
 
             const ordersWithProduct = await OrderItem.findAll({
                 attributes: ['orderId'],
@@ -689,30 +676,13 @@ class CollaborativeFilteringService {
                 new Set(ordersWithProduct.map((item: any) => item.orderId))
             );
 
-            console.log(`✅ Found ${orderIds.length} orders with this product\n`);
-
             if (orderIds.length === 0) {
-                return {
-                    success: true,
-                    algorithm: 'market_basket_analysis',
-                    currentProductId: productId,
-                    currentProductName: mainProduct.name,
-                    totalOrdersWithMainProduct: 0,
-                    totalOrdersInSystem: 0,
-                    boughtTogether: [],
-                    metrics: {
-                        timeComplexity: 'O(n × m)',
-                        spaceComplexity: 'O(p)',
-                        executionTime: Date.now() - startTime,
-                    },
-                };
+                return null as any;
             }
 
             // ─────────────────────────────────────────────────────────
             // STEP 3: Fetch ALL items from these orders
             // ─────────────────────────────────────────────────────────
-            console.log(`[STEP 3] Fetching all items from these orders...`);
-
             const allItemsInOrders = await OrderItem.findAll({
                 attributes: ['productId', 'orderId'],
                 where: {
@@ -721,13 +691,9 @@ class CollaborativeFilteringService {
                 raw: true,
             });
 
-            console.log(`✅ Found ${allItemsInOrders.length} total items\n`);
-
             // ─────────────────────────────────────────────────────────
             // STEP 4: Count co-occurrences (Pure JS Algorithm)
             // ─────────────────────────────────────────────────────────
-            console.log(`[STEP 4] Calculating co-occurrence frequencies...\n`);
-
             // Create map: productId -> count
             const coOccurrenceMap = new Map<number, number>();
 
@@ -743,13 +709,9 @@ class CollaborativeFilteringService {
                 coOccurrenceMap.set(item.productId, currentCount + 1);
             }
 
-            console.log(`✅ Found ${coOccurrenceMap.size} unique products\n`);
-
             // ─────────────────────────────────────────────────────────
             // STEP 5: Calculate metrics for each product
             // ─────────────────────────────────────────────────────────
-            console.log(`[STEP 5] Calculating confidence and support metrics...\n`);
-
             // Get all total orders in system
             const allOrders = await Order.findAll({
                 // where: { orderStatus: 'completed' },
@@ -759,13 +721,9 @@ class CollaborativeFilteringService {
 
             const totalOrdersInSystem = allOrders.length;
 
-            console.log(`   Total orders in system: ${totalOrdersInSystem}\n`);
-
             // ─────────────────────────────────────────────────────────
             // STEP 6: Sort by co-occurrence and get top products
             // ─────────────────────────────────────────────────────────
-            console.log(`[STEP 6] Sorting and fetching top ${limit} products...\n`);
-
             // Convert map to array and sort
             // Array of: [productId, coOccurrenceCount]
             const sortedProducts = Array.from(coOccurrenceMap.entries())
@@ -779,14 +737,13 @@ class CollaborativeFilteringService {
                     id: { [Op.in]: sortedProducts },
                     quantity: { [Op.gt]: 0 },
                 },
-                attributes: ['id', 'name', 'description','unit', 'image', 'rate', 'quantity'],
+                attributes: ['id', 'name', 'description', 'unit', 'image', 'rate', 'quantity'],
                 raw: true,
             });
 
             // ─────────────────────────────────────────────────────────
             // STEP 7: Calculate association rules for each product
             // ─────────────────────────────────────────────────────────
-            console.log(`[STEP 7] Computing association rules...\n`);
 
             const basketProducts: MarketBasketProduct[] = (products as any[]).map(
                 (product) => {
@@ -805,116 +762,22 @@ class CollaborativeFilteringService {
                     // Support(A→B) = |Orders with A AND B| / Total Orders × 100%
                     const support = (coOccurrenceCount / totalOrdersInSystem) * 100;
 
-                    console.log(`   📦 ${product.name}
-      Co-occurrence: ${coOccurrenceCount}
-      Frequency: ${coOccurrenceFrequency.toFixed(4)}
-      Confidence: ${confidence.toFixed(2)}%
-      Support: ${support.toFixed(2)}%`);
-
                     return {
                         ...product,
                         rating: product.rate,
-                        stock: product.quantity,
-                        coOccurrenceCount,
-                        coOccurrenceFrequency: parseFloat(coOccurrenceFrequency.toFixed(4)),
-                        confidence: Math.round(confidence),
-                        support: parseFloat(support.toFixed(2)),
+                        stock: product.quantity
                     };
                 }
             );
 
-            const executionTime = Date.now() - startTime;
 
-            console.log(`\n${'═'.repeat(80)}`);
-            console.log(`✅ ANALYSIS COMPLETED`);
-            console.log(`${'═'.repeat(80)}`);
-            console.log(`
-📊 SUMMARY:
-   Product: ${mainProduct.name}
-   Orders Analyzed: ${orderIds.length}
-   Products Found: ${basketProducts.length}
-   Time: ${executionTime}ms
-
-⚙️ ALGORITHM PERFORMANCE:
-   Time Complexity:  O(n × m)
-   Space Complexity: O(p)
-   Processing: Pure JavaScript
-${'═'.repeat(80)}\n`);
-
-            return {
-                success: true,
-                algorithm: 'market_basket_analysis',
-                currentProductId: productId,
-                currentProductName: mainProduct.name,
-                totalOrdersWithMainProduct: orderIds.length,
-                totalOrdersInSystem,
-                boughtTogether: basketProducts,
-                metrics: {
-                    timeComplexity: 'O(n × m)',
-                    spaceComplexity: 'O(p)',
-                    executionTime,
-                },
-            };
+            return basketProducts;
         } catch (error) {
             console.error('❌ Error:', error);
             throw error;
         }
     }
 
-    /**
-     * Get Association Rules with Lift
-     */
-    async getAssociationRules(
-        productId: number,
-        limit: number = 5
-    ): Promise<AssociationRulesResult> {
-        try {
-            const result = await this.getMarketBasketAnalysis(productId, limit);
-
-            if (!result.success || result.boughtTogether.length === 0) {
-                throw new Error('Could not generate association rules');
-            }
-
-            // CALCULATE LIFT in JavaScript
-            // Lift = Confidence / (Support of B)
-            // Lift > 1 means A and B are positively correlated
-            // Lift = 1 means A and B are independent
-            // Lift < 1 means A and B are negatively correlated
-
-            const rules: AssociationRule[] = result.boughtTogether.map((product) => {
-                // Lift calculation
-                const lift = product.confidence / Math.max(product.support, 0.1);
-
-                return {
-                    rule: `${result.currentProductName} → ${product.name}`,
-                    confidence: product.confidence,
-                    support: product.support,
-                    lift: parseFloat(lift.toFixed(2)),
-                    coOccurrenceCount: product.coOccurrenceCount,
-                };
-            });
-
-            console.log(`\n📊 ASSOCIATION RULES WITH LIFT:\n`);
-            rules.forEach((rule, idx) => {
-                console.log(`${idx + 1}. ${rule.rule}`);
-                console.log(`   Confidence: ${rule.confidence}%`);
-                console.log(`   Support: ${rule.support.toFixed(2)}%`);
-                console.log(`   Lift: ${rule.lift}`);
-                console.log(`   Times Bought: ${rule.coOccurrenceCount}\n`);
-            });
-
-            return {
-                success: true,
-                productId,
-                productName: result.currentProductName,
-                totalTransactions: result.totalOrdersInSystem,
-                associationRules: rules,
-            };
-        } catch (error) {
-            console.error('❌ Error:', error);
-            throw error;
-        }
-    }
 }
 
 export default new CollaborativeFilteringService();

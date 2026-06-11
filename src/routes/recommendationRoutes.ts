@@ -60,16 +60,6 @@ router.get(
     recommendationController.getMarketBasketAnalysis(req, res)
 );
 
-/**
- * GET /api/products/:productId/association-rules
- * Get detailed association rules with Confidence, Support, and Lift metrics
- * 
- * Example: /api/products/5/association-rules?limit=5
- */
-router.get(
-  '/products/:productId/association-rules',
-  (req: Request, res: Response) =>
-    recommendationController.getAssociationRules(req, res)
-);
+
 
 export default router;

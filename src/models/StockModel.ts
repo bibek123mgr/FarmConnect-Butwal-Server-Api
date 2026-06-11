@@ -6,6 +6,7 @@ import Farm from "./FarmModel";
 export enum comesFrom {
     OPENING_STOCK = "opening_stock",
     PRODUCTION = "production",
+    PURCHASE = "purchase",
     SALES = "sales",
     SALES_RETURN = "sales_return",
     DAMAGE = "damage",
