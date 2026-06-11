@@ -20,10 +20,11 @@ class ProductStockRedisMiddleware {
                     page = 1,
                     limit = 20,
                     pricerangeFrom,
-                    pricerangeTo
+                    pricerangeTo,
+                    store
                 } = data;
 
-                const cacheKey = `products:stock:page=${page}:limit=${limit}:name=${productname || "all"}:category=${category || "all"}:from=${pricerangeFrom || 0}:to=${pricerangeTo || "max"}`;
+                const cacheKey = `products:stock:page=${page}:limit=${limit}:name=${productname || "all"}:category=${category || "all"}:from=${pricerangeFrom || 0}:to=${pricerangeTo || "max"}:store=${store || "all"}`;
                 const cachedData = await redisClient.get(cacheKey);
 
                 if (cachedData) {

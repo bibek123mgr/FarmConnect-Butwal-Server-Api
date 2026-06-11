@@ -5,6 +5,7 @@ import Order from '../models/OrderModel';
 import Product from '../models/ProductModel';
 import User from '../models/UserModel';
 import OrderItem from '../models/OrderItemModel';
+import ActualStock from '../models/ActualStockMode';
 // types/recommendation.types.ts
 
 /**
@@ -86,21 +87,6 @@ export interface MarketBasketProduct {
     image: string;
     rating: number;
     stock: number;
-}
-
-export interface MarketBasketAnalysisResult {
-    success: boolean;
-    algorithm: string;
-    currentProductId: number;
-    currentProductName: string;
-    totalOrdersWithMainProduct: number;  // |Orders with A|
-    totalOrdersInSystem: number;          // Total Orders
-    boughtTogether: MarketBasketProduct[];
-    metrics: {
-        timeComplexity: string;
-        spaceComplexity: string;
-        executionTime: number;
-    };
 }
 
 export interface AssociationRule {
@@ -640,7 +626,6 @@ class CollaborativeFilteringService {
         limit: number = 5
     ): Promise<MarketBasketProduct[] | null> {
         try {
-            const startTime = Date.now();
 
             // ─────────────────────────────────────────────────────────
             // STEP 1: Fetch main product
@@ -745,29 +730,16 @@ class CollaborativeFilteringService {
             // STEP 7: Calculate association rules for each product
             // ─────────────────────────────────────────────────────────
 
-            const basketProducts: MarketBasketProduct[] = (products as any[]).map(
-                (product) => {
-                    // Get co-occurrence count
-                    const coOccurrenceCount = coOccurrenceMap.get(product.id) || 0;
-
-                    // CO-PURCHASE FREQUENCY FORMULA
-                    // Co-purchase Freq = |Orders with A AND B| / |Orders with A|
-                    const coOccurrenceFrequency = coOccurrenceCount / orderIds.length;
-
-                    // CONFIDENCE FORMULA
-                    // Confidence(A→B) = Co-purchase Frequency(A,B) × 100%
-                    const confidence = coOccurrenceFrequency * 100;
-
-                    // SUPPORT FORMULA
-                    // Support(A→B) = |Orders with A AND B| / Total Orders × 100%
-                    const support = (coOccurrenceCount / totalOrdersInSystem) * 100;
+            const basketProducts: MarketBasketProduct[] = await Promise.all(
+                (products as any[]).map(async (product) => {
+                    const stock = await this.getStock(product.id);
 
                     return {
                         ...product,
                         rating: product.rate,
-                        stock: product.quantity
+                        stock,
                     };
-                }
+                })
             );
 
 
@@ -776,6 +748,30 @@ class CollaborativeFilteringService {
             console.error('❌ Error:', error);
             throw error;
         }
+    }
+
+    private async getStock(productId: number): Promise<number> {
+        const stock = await ActualStock.findOne({
+            where: {
+                productId,
+                isActive: true,
+            },
+        });
+
+        if (!stock) {
+            return 0;
+        }
+
+        return (
+            Number(stock.openingStock) +
+            Number(stock.production) +
+            Number(stock.salesReturn) +
+            Number(stock.chalanReturn) -
+            Number(stock.sales) -
+            Number(stock.damage) -
+            Number(stock.chalan) -
+            Number(stock.reserveQuantity)
+        );
     }
 
 }

@@ -32,6 +32,7 @@ export interface IGetAdminProductFilter {
 export interface IgetAllProductsFilter extends IGetAdminProductFilter {
     pricerangeFrom?: number;
     pricerangeTo?: number | string;
+    store?: number | string;
 }
 
 class ProductService {
@@ -104,7 +105,8 @@ class ProductService {
             page = 1,
             limit = 20,
             pricerangeFrom,
-            pricerangeTo
+            pricerangeTo,
+            store
         } = data;
 
         const pageNumber = Number(page) || 1;
@@ -146,6 +148,13 @@ class ProductService {
             replacements.toPrice = toPrice;
         }
 
+        if (store !== undefined && store !== "all") {
+            whereConditions += ` AND p.farmId = :farmId`;
+            replacements.farmId = store;
+        }
+
+        console.log(whereConditions);
+
         const products = await sequelize.query(
             `
         SELECT 
@@ -180,7 +189,7 @@ class ProductService {
             }
         );
 
-        const cacheKey = `products:stock:page=${pageNumber}:limit=${limitNumber}:name=${productname || "all"}:category=${category || "all"}:from=${fromPrice ?? 0}:to=${toPrice ?? "max"}`;
+        const cacheKey = `products:stock:page=${pageNumber}:limit=${limitNumber}:name=${productname || "all"}:category=${category || "all"}:from=${fromPrice ?? 0}:to=${toPrice ?? "max"}:store=${store || "all"}`;
 
         await redisClient.set(cacheKey, JSON.stringify(products), "EX", 600);
 
@@ -512,7 +521,7 @@ class ProductService {
 
     static async getAllMyProductForCombobox(userId: number) {
         const products = await Product.findAll({
-            attributes: ["id", "name","unit"],
+            attributes: ["id", "name", "unit"],
             where: {
                 farmerId: userId,
                 isActive: true
