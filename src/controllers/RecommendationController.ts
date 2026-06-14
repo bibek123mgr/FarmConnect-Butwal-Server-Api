@@ -222,7 +222,7 @@ class RecommendationController {
             const productId = Array.isArray(req.params.productId)
                 ? req.params.productId[0]
                 : req.params.productId;
-             const { limit = '5' } = req.query;
+            const { limit = '5' } = req.query;
 
             if (!productId || isNaN(Number(productId))) {
                 res.status(400).json({
@@ -233,15 +233,42 @@ class RecommendationController {
             }
 
             const result = await collaborativeFilteringService.getMarketBasketAnalysis(
-                    parseInt(productId),
-                    parseInt(limit as string)
-                )
+                parseInt(productId),
+                parseInt(limit as string)
+            )
             res.json({
                 success: true,
                 data: result,
             });
         } catch (error) {
             console.error('Error in getMarketBasketAnalysis:', error);
+            res.status(500).json({
+                success: false,
+                error: error instanceof Error ? error.message : 'Internal server error',
+            });
+        }
+    }
+
+    async autocorrectSearch(req: Request, res: Response) {
+        try {
+            const { keyword } = req.query;
+            console.log(req.query);
+            console.log(keyword);
+            if (!keyword) {
+                res.status(400).json({
+                    success: false,
+                    error: 'Valid keyword is required',
+                });
+                return;
+            }
+
+            const result = await collaborativeFilteringService.autocorrectSearch(keyword as string);
+            res.json({
+                success: true,
+                data: result,
+            });
+        } catch (error) {
+            console.error('Error in autocorrectSearch:', error);
             res.status(500).json({
                 success: false,
                 error: error instanceof Error ? error.message : 'Internal server error',

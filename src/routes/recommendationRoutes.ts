@@ -61,5 +61,22 @@ router.get(
 );
 
 
+/**
+ * GET /api/autocorrect-search
+ * Market Basket Analysis - Find frequently bought together products
+ * 
+ * Query Parameters:
+ *   - limit (optional): Number of recommendations (default: 5)
+ *   - optimized (optional): Use optimized SQL query (default: false)
+ * 
+ * Example: /api/products/5/market-basket-analysis?limit=8&optimized=true
+ */
+router.get(
+  '/products/autocorrect-search',
+  (req: Request, res: Response) =>
+    recommendationController.autocorrectSearch(req, res)
+);
+
+
 
 export default router;

@@ -695,20 +695,6 @@ class CollaborativeFilteringService {
             }
 
             // ─────────────────────────────────────────────────────────
-            // STEP 5: Calculate metrics for each product
-            // ─────────────────────────────────────────────────────────
-            // Get all total orders in system
-            const allOrders = await Order.findAll({
-                // where: { orderStatus: 'completed' },
-                attributes: ['id'],
-                raw: true,
-            });
-
-            const totalOrdersInSystem = allOrders.length;
-
-            // ─────────────────────────────────────────────────────────
-            // STEP 6: Sort by co-occurrence and get top products
-            // ─────────────────────────────────────────────────────────
             // Convert map to array and sort
             // Array of: [productId, coOccurrenceCount]
             const sortedProducts = Array.from(coOccurrenceMap.entries())
@@ -745,7 +731,7 @@ class CollaborativeFilteringService {
 
             return basketProducts;
         } catch (error) {
-            console.error('❌ Error:', error);
+            console.error('Error:', error);
             throw error;
         }
     }
@@ -772,6 +758,97 @@ class CollaborativeFilteringService {
             Number(stock.chalan) -
             Number(stock.reserveQuantity)
         );
+    }
+
+    // Add console.log to see what's happening
+    private editDistance(keyword: string, productName: string) {
+        const keywordLower = keyword.toLowerCase();
+        const productLower = productName.toLowerCase();
+
+        const keywordWords = keywordLower.split(' ');
+        const productWords = productLower.split(' ');
+
+        console.log(`Comparing "${keywordLower}" with "${productLower}"`);
+        console.log(`Keyword words:`, keywordWords);
+        console.log(`Product words:`, productWords);
+
+        let bestDistance = Infinity;
+
+        for (const kw of keywordWords) {
+            for (const pw of productWords) {
+                const distance = this.levenshteinDistance(kw, pw);
+                console.log(`  "${kw}" vs "${pw}" = ${distance}`);
+                if (distance < bestDistance) {
+                    bestDistance = distance;
+                }
+            }
+        }
+
+        console.log(`Best distance: ${bestDistance}\n`);
+        return bestDistance === Infinity ? 999 : bestDistance;
+    }
+
+    // Keep this as your core Levenshtein algorithm
+    private levenshteinDistance(a: string, b: string) {
+        const dp = Array(a.length + 1)
+            .fill(null)
+            .map(() => Array(b.length + 1).fill(0));
+
+        for (let i = 0; i <= a.length; i++) dp[i][0] = i;
+        for (let j = 0; j <= b.length; j++) dp[0][j] = j;
+
+        for (let i = 1; i <= a.length; i++) {
+            for (let j = 1; j <= b.length; j++) {
+                if (a[i - 1] === b[j - 1]) {
+                    dp[i][j] = dp[i - 1][j - 1];
+                } else {
+                    dp[i][j] = 1 + Math.min(
+                        dp[i - 1][j],     // delete
+                        dp[i][j - 1],     // insert
+                        dp[i - 1][j - 1]  // replace
+                    );
+                }
+            }
+        }
+
+        return dp[a.length][b.length];
+    }
+
+    async autocorrectSearch(keyword: string) {
+        if (!keyword || keyword.trim().length === 0) {
+            return [];
+        }
+
+        const products = await Product.findAll({
+            attributes: ["id", "name", "image"],
+            raw: true,
+        });
+
+        const results = products.map(p => ({
+            id: p.id,
+            name: p.name,
+            image: p.image,
+            distance: this.editDistance(keyword, p.name)
+        }));
+
+        console.log("All results before deduplication:", results);
+
+        // Remove duplicates by name (keeping the one with smallest distance)
+        const productMap = new Map<string, typeof results[0]>();
+        for (const product of results) {
+            if (!productMap.has(product.name) || productMap.get(product.name)!.distance > product.distance) {
+                productMap.set(product.name, product);
+            }
+        }
+
+        const uniqueResults = Array.from(productMap.values());
+
+        console.log("Unique results after deduplication:", uniqueResults);
+
+        const sorted = uniqueResults.sort((a, b) => a.distance - b.distance);
+        console.log("Sorted results:", sorted);
+
+        return sorted.slice(0, 10);
     }
 
 }
