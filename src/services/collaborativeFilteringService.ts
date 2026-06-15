@@ -768,10 +768,6 @@ class CollaborativeFilteringService {
         const keywordWords = keywordLower.split(' ');
         const productWords = productLower.split(' ');
 
-        console.log(`Comparing "${keywordLower}" with "${productLower}"`);
-        console.log(`Keyword words:`, keywordWords);
-        console.log(`Product words:`, productWords);
-
         let bestDistance = Infinity;
 
         for (const kw of keywordWords) {
@@ -831,7 +827,6 @@ class CollaborativeFilteringService {
             distance: this.editDistance(keyword, p.name)
         }));
 
-        console.log("All results before deduplication:", results);
 
         // Remove duplicates by name (keeping the one with smallest distance)
         const productMap = new Map<string, typeof results[0]>();
@@ -843,10 +838,8 @@ class CollaborativeFilteringService {
 
         const uniqueResults = Array.from(productMap.values());
 
-        console.log("Unique results after deduplication:", uniqueResults);
 
         const sorted = uniqueResults.sort((a, b) => a.distance - b.distance);
-        console.log("Sorted results:", sorted);
 
         return sorted.slice(0, 10);
     }

@@ -12,6 +12,7 @@ import NotificationRoute from "./NotificationRoute";
 import UserRoute from "./UserRoute";
 import recommendationRoute from "./recommendationRoutes";
 import VendorRoute from "./VendorRoute";
+import DashboardRoute from './DashboardRoute'
 export {
     AuthRoute,
     FarmRoute,
@@ -26,5 +27,6 @@ export {
     NotificationRoute,
     UserRoute,
     recommendationRoute,
-    VendorRoute
+    VendorRoute,
+    DashboardRoute
 }
