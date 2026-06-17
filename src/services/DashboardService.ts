@@ -7,20 +7,27 @@ import Category from "../models/CategoryModel";
 
 class DashboardService {
 
-    static async getDashboardStats() {
+    static async getDashboardStats(farmId: number) {
         const sevenDaysAgo = new Date();
         sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 6);
 
         const [totalOrders, totalAmount, totalProducts, totalPayment, topSellingProducts, dailySalesData, categorySales, monthlySalesData
         ] = await Promise.all([
-            VendorOrder.count(),
+            VendorOrder.count({
+                where: { farmId: farmId }
+            }),
             VendorOrder.findOne({
+                where: { farmId: farmId },
                 attributes: [
                     [fn("SUM", col("totalAmount")), "totalAmount"]
                 ],
                 raw: true,
             }),
-            Product.count(),
+            Product.count(
+                {
+                    where: { farmerId: farmId }
+                }
+            ),
             Payment.findOne({
                 attributes: [
                     [fn("SUM", col("amount")), "totalAmount"]
