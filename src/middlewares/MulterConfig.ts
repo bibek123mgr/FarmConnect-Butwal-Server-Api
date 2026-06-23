@@ -1,56 +1,38 @@
+import { v2 as cloudinary } from "cloudinary";
+import streamifier from "streamifier";
+import { config } from "../config";
 import multer from "multer";
-import path from "path";
-import fs from "fs";
-import crypto from "crypto";
 
-const uploadPath = path.join(__dirname, "../../public/images");
-
-// create folder if not exists
-if (!fs.existsSync(uploadPath)) {
-    fs.mkdirSync(uploadPath, { recursive: true });
-}
-
-const storage = multer.diskStorage({
-    destination: function (req, file, cb) {
-        cb(null, uploadPath);
-    },
-
-    filename: function (req, file, cb) {
-        try {
-            const ext = path.extname(file.originalname);
-
-            const uniqueName =
-                Date.now() +
-                "-" +
-                crypto.randomBytes(6).toString("hex") +
-                ext;
-
-            cb(null, uniqueName);
-        } catch (error) {
-            cb(error as Error, "");
-        }
-    },
+/* ================= CLOUDINARY CONFIG ================= */
+cloudinary.config({
+    cloud_name: config.CLOUDNARY_KEY_NAME,
+    api_key: config.CLOUDNARY_API_KEY,
+    api_secret: config.CLOUDNARY_API_SECRET_KEY,
 });
 
-const fileFilter: multer.Options["fileFilter"] = (req, file, cb) => {
-    const allowedMimeTypes = [
-        "image/jpeg",
-        "image/png",
-        "image/jpg",
-        "image/webp",
-    ];
+/* ================= UPLOAD FUNCTION ================= */
+export const uploadToCloudinary = (file: Express.Multer.File) => {
+    return new Promise((resolve, reject) => {
+        if (!file) return reject(new Error("No file provided"));
 
-    if (!allowedMimeTypes.includes(file.mimetype)) {
-        return cb(new Error("Only jpg, jpeg, png and webp images are allowed"));
-    }
+        const uploadStream = cloudinary.uploader.upload_stream(
+            {
+                folder: "farm_connect_products",
+                resource_type: "image",
+            },
+            (error, result) => {
+                if (error) return reject(error);
+                resolve(result);
+            }
+        );
 
-    cb(null, true);
+        streamifier.createReadStream(file.buffer).pipe(uploadStream);
+    });
 };
 
 export const upload = multer({
-    storage,
-    fileFilter,
+    storage: multer.memoryStorage(),
     limits: {
-        fileSize: 1024 * 1024 * 5, // 5MB
+        fileSize: 5 * 1024 * 1024, // 5MB
     },
 });

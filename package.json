@@ -36,23 +36,25 @@
     "@bibek_magar/bikram-sambat-converter": "^1.0.0",
     "axios": "^1.15.0",
     "bcrypt": "^6.0.0",
+    "cloudinary": "^2.10.0",
     "cookie-parser": "^1.4.7",
     "cors": "^2.8.6",
     "crypto": "^1.0.1",
     "currency": "^4.1.0",
-    "dotenv": "^17.4.1",
+    "dotenv": "^17.4.2",
     "express": "^5.2.1",
     "express-rate-limit": "^8.4.0",
     "google-auth-library": "^10.6.2",
     "ioredis": "^5.10.1",
     "joi": "^18.1.2",
     "jsonwebtoken": "^9.0.3",
-    "multer": "^2.1.1",
+    "multer": "^2.2.0",
     "mysql2": "^3.22.0",
     "rebuild": "^0.1.2",
     "reflect-metadata": "^0.2.2",
     "sequelize": "^6.37.8",
-    "socket.io": "^4.8.3"
+    "socket.io": "^4.8.3",
+    "streamifier": "^0.1.1"
   },
   "devDependencies": {
     "@types/bcrypt": "^6.0.0",
@@ -62,6 +64,7 @@
     "@types/multer": "^2.1.0",
     "@types/node": "^25.6.0",
     "@types/sequelize": "^4.28.20",
+    "@types/streamifier": "^0.1.2",
     "nodemon": "^3.1.14",
     "sequelize-typescript": "^2.1.6",
     "ts-node": "^10.9.2",
@@ -71,5 +74,10 @@
   "optionalDependencies": {
     "bufferutil": "^4.1.0",
     "utf-8-validate": "^6.0.6"
+  },
+  "allowScripts": {
+    "bcrypt@6.0.0": true,
+    "bufferutil@4.1.0": true,
+    "utf-8-validate@6.0.6": true
   }
 }

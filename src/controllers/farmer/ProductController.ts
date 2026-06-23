@@ -2,6 +2,7 @@ import { Request, Response } from "express";
 import { asyncHandler } from "../../utils/asyncHandler";
 import ProductService from "../../services/farmer/ProductService";
 import { AuthRequest } from "../../middlewares/Auth";
+import { uploadToCloudinary } from "../../middlewares/MulterConfig";
 
 class ProductController {
     static create = asyncHandler(async (req: AuthRequest, res: Response) => {
@@ -9,13 +10,19 @@ class ProductController {
         const userId = req.user!.id;
         const farmId = req.user!.farmId;
         const file = req.file;
-        const image = file?.filename;
+       console.log("++++++++++++++++++++++++++++++++++++++++++++++++++");
         if (!file) {
             return res.status(400).json({
                 success: false,
                 message: "Image is required",
             });
         }
+        const result: any = await uploadToCloudinary(file);
+        const image = result.url;
+        console.log("++++++++++++++++++++++++++++++++++++++++++++++++++");
+        console.log("result", result);
+        console.log("++++++++++++++++++++++++++++++++++++++++++++++++++");
+
         await ProductService.createProduct({
             userId,
             name,

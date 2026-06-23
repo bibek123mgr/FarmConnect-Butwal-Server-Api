@@ -45,7 +45,6 @@ class PaymentManagementService {
                 ],
                 order: [["createdAt", "DESC"]]
             },
-            
             raw: true
         );
     }
