@@ -31,7 +31,6 @@ class AuthService {
         return false;
     }
 
-
     static async createUserWithGoogle(data: CreateUserDTO) {
         const user = await User.create({
             name: data.name,
@@ -44,6 +43,7 @@ class AuthService {
 
         return user;
     }
+
     static async createUser(data: CreateUserDTO) {
         await this.checkExistingUser(data.email);
         const user = await User.create({
@@ -333,6 +333,25 @@ class AuthService {
 
             topSellingProducts
         };
+    }
+
+    static async getFarmerDetailsFromFarmId(farmId: number) {
+        const farmerDetails=await sequelize.query(
+            `
+            SELECT 
+                user.id as user_id
+                user.name as user_name,
+                user.email as email
+                farm.id as farm_id,
+                farm.farmName as farm_name
+            FROM users as user
+            INNER JOIN farms as farm
+                ON user.id = farm.userId
+            WHERE farm.id = :farmId
+            `
+        );
+
+        return farmerDetails[0][0];
     }
 }
 
