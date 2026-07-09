@@ -336,23 +336,27 @@ class AuthService {
     }
 
     static async getFarmerDetailsFromFarmId(farmId: number) {
-        const farmerDetails=await sequelize.query(
+        const farmerDetails = await sequelize.query(
             `
-            SELECT 
-                user.id as user_id
-                user.name as user_name,
-                user.email as email
-                farm.id as farm_id,
-                farm.farmName as farm_name
-            FROM users as user
-            INNER JOIN farms as farm
-                ON user.id = farm.userId
-            WHERE farm.id = :farmId
-            `
+        SELECT
+            user.id AS user_id,
+            user.name AS user_name,
+            user.email AS email,
+            farm.id AS farm_id,
+            farm.farmName AS farm_name
+        FROM users AS user
+        INNER JOIN farms AS farm
+            ON user.id = farm.userId
+        WHERE farm.id = :farmId
+        `,
+            {
+                replacements: { farmId },
+                type: QueryTypes.SELECT,
+            }
         );
-
-        return farmerDetails[0][0];
+        return farmerDetails[0];
     }
+
 }
 
 export default AuthService;

@@ -13,6 +13,7 @@ import UserRoute from "./UserRoute";
 import recommendationRoute from "./recommendationRoutes";
 import VendorRoute from "./VendorRoute";
 import DashboardRoute from './DashboardRoute'
+import PaymentRoute from "./PaymentRoute";
 export {
     AuthRoute,
     FarmRoute,
@@ -28,5 +29,6 @@ export {
     UserRoute,
     recommendationRoute,
     VendorRoute,
-    DashboardRoute
+    DashboardRoute,
+    PaymentRoute
 }

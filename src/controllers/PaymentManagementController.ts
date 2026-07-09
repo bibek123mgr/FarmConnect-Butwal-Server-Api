@@ -1,31 +1,34 @@
 import { Request, Response } from "express";
 import PaymentManagementService from "../services/PaymentManagementService";
+import AuthService from "../services/auth/AuthService";
+import { AuthRequest } from "../middlewares/Auth";
 class PaymentManagementController {
 
-    // static async getPaymentMethods(req:Request, res:Response) {
-    //     try {
-    //         const paymentMethods = await PaymentManagementService.getAllPayment();
-    //         return res.status(200).json({
-    //             status: true,
-    //             message: "Payment methods fetched successfully",
-    //             data: paymentMethods,
-    //         });
-    //     } catch (error) {
-    //         return res.status(500).json({
-    //             status: false,
-    //             message: "Error fetching payment methods",
-    //             error: error.message,
-    //         });
-    //     }
-    // }
-
-    static async createPaymentMethod(req: Request, res: Response) {
+    static async createPaymentMethod(req: AuthRequest, res: Response) {
         try {
-            const paymentMethod = await PaymentManagementService.cretaePayment(req.body);
+            const {
+                vendorId,
+                amount,
+                paymentMethod,
+                remarks
+            } = req.body;
+            const farmer: any = await AuthService.getFarmerDetailsFromFarmId(vendorId)
+            const createdBy = req.user!.id;
+            const userId = farmer?.user_id;
+
+            const paymentObject = {
+                farmId:vendorId,
+                amount,
+                paymentMethod,
+                remarks,
+                createdBy,
+                user: userId
+            }
+
+            const payment = await PaymentManagementService.cretaePayment(paymentObject);
             return res.status(201).json({
                 status: true,
-                message: "Payment method created successfully",
-                data: paymentMethod,
+                message: "Payment method created successfully"
             });
         } catch (error) {
             return res.status(500).json({

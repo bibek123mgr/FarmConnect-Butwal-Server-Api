@@ -1,6 +1,7 @@
 import { Model, Column, DataType, Default, Table, ForeignKey, BelongsTo } from "sequelize-typescript";
 import User from "./UserModel";
 import { PaymentMethod } from "./PaymentModel";
+import Farm from "./FarmModel";
 
 @Table({
     tableName: "payment_management",
@@ -21,26 +22,54 @@ export class PaymentManagement extends Model {
     declare amount: number;
 
     @Column({
-            type: DataType.ENUM(...Object.values(PaymentMethod)),
-            allowNull: false,
-        })
-    declare paymentMethod: PaymentMethod;
+        type: DataType.STRING,
+        allowNull: false,
+    })
+    declare paymentMethod: String;
+
+    @Column({
+        type: DataType.STRING
+    })
+    declare remarks: string;
+
 
     @ForeignKey(() => User)
     @Column({
         type: DataType.INTEGER,
         allowNull: false,
     })
-    declare fromUser: number;
+    declare sendToUser: number;
 
     @BelongsTo(() => User)
-    user!: User;
+    sendUser!: User;
+
+    @ForeignKey(() => Farm)
+    @Column({
+        type: DataType.INTEGER,
+        allowNull: false,
+    })
+    declare farmId: number;
+
+    @BelongsTo(() => Farm)
+    farm!: Farm;
 
     @Default(true)
     @Column({
         type: DataType.BOOLEAN,
     })
     declare isActive: boolean;
+    @ForeignKey(() => User)
+    @Column({
+        type: DataType.INTEGER,
+        allowNull: false,
+    })
+    declare createdBy: number;
+
+    @BelongsTo(() => User)
+    user!: User;
 }
+
+
+
 
 export default PaymentManagement
