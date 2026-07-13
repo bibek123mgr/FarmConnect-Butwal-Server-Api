@@ -159,7 +159,8 @@ class ProductService {
             `
         SELECT 
             p.id, 
-            p.name, 
+            p.name,
+            p.image, 
             p.description, 
             p.unit, 
             COALESCE(pp.price, p.rate) as rate, 
@@ -213,7 +214,7 @@ class ProductService {
                 FROM (
                     SELECT
                         p.id, 
-                        p.name, 
+                        p.name,
                         p.description, 
                         p.unit, 
                         COALESCE(pp.price, p.rate) AS rate, 
@@ -226,15 +227,12 @@ class ProductService {
                             a.openingStock + a.production - a.sales + a.salesReturn 
                             - a.damage - a.chalan + a.chalanReturn - a.reserveQuantity
                         ), 0) AS quantity,
-
                         COALESCE(SUM(a.sales - a.salesReturn), 0) AS totalSold
-
                     FROM products p 
                     INNER JOIN actual_stock a ON p.id = a.productId
                     INNER JOIN farms f ON p.farmId = f.id
                     INNER JOIN categories c ON p.categoryId = c.id
                     LEFT JOIN product_prices pp ON p.id = pp.productId
-
                     GROUP BY p.id
                     ORDER BY totalSold DESC
                     LIMIT 5

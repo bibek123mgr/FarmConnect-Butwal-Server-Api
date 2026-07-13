@@ -51,7 +51,9 @@ class CommentService {
 
         await redisClient.set(
             `product:comments:${productId}`,
-            JSON.stringify(comments)
+            JSON.stringify(comments),
+            "EX", 600
+
         );
 
         return comments;

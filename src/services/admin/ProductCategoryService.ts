@@ -39,7 +39,7 @@ class ProductCategoryService {
             attributes: ["id", "name", "image"],
             order: [["sortOrder", "ASC"]],
         });
-        await redisClient.set("categories:all", JSON.stringify(categories));
+        await redisClient.set("categories:all", JSON.stringify(categories), "EX", 600);
         return categories;
     }
 
