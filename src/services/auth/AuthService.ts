@@ -160,8 +160,10 @@ class AuthService {
                 "name",
                 "email",
                 "role",
+                "phone",
                 [Sequelize.col("farm.id"), "farmId"],
-                [Sequelize.col("farm.farmName"), "farmName"]
+                [Sequelize.col("farm.farmName"), "farmName"],
+                "createdAt"
             ],
 
             include: [
