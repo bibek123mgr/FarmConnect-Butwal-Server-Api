@@ -194,6 +194,48 @@ class AuthController {
         });
     });
 
+
+    static updateUserProfile = asyncHandler(async (req: AuthRequest, res: Response) => {
+        const userId = req.user?.id as number;
+        const data = req.body;
+        const jsonObject = {
+            ...data,
+            id: userId
+        }
+        const updatedUser = await AuthService.updateUserProfile(jsonObject);
+        return res.status(200).json({
+            status: true,
+            message: "User profile updated successfully",
+            user: updatedUser
+        });
+    }
+    );
+
+    static updateUserPassword = asyncHandler(async (req: AuthRequest, res: Response) => {
+        const userId = req.user?.id as number;
+        const { oldPassword, newPassword, confirmPassword } = req.body;
+        if(!oldPassword || !newPassword || !confirmPassword) {
+            return res.status(400).json({
+                status: false,
+                message: "All fields are required"
+            });
+        }
+        if(newPassword !== confirmPassword) {
+            return res.status(400).json({
+                status: false,
+                message: "New password and confirm password do not match"
+            });
+        }
+    
+        const updatedUser = await AuthService.updateUserPassword(userId, oldPassword, newPassword);
+        return res.status(200).json({
+            status: true,
+            message: "User password updated successfully",
+            user: updatedUser
+        });
+    }
+    );
+
 }
 
 export default AuthController;

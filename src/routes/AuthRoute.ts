@@ -13,6 +13,8 @@ router.post('/login', AuthValidation.login, AuthController.login);
 router.get('/getme', Auth, authRedisMiddleware.getMyProfileFromCache(), AuthController.me);
 router.post('/refresh-token', Auth, AuthController.refreshToken);
 router.post('/logout', Auth, AuthController.logout);
+router.put("/update-profile", Auth, AuthController.updateUserProfile);
+router.put("/update-password", Auth, AuthController.updateUserPassword);
 
 
 export default router;

@@ -16,6 +16,13 @@ interface CreateUserDTO {
     googleId?: string
 }
 
+interface UpdateUserProfileDTO {
+    id: number;
+    name: string;
+    phone: string;
+    address: string;
+}
+
 class AuthService {
     static async checkExistingUser(email: string) {
         const existingUser = await User.findOne(
@@ -29,6 +36,36 @@ class AuthService {
             throw new ConflictError('User already exists with this email');
         }
         return false;
+    }
+
+    static async updateUserProfile(data: UpdateUserProfileDTO) {
+
+        const user = await User.findByPk(data.id);
+        if (!user) {
+            throw new UnauthorizedError('User not found');
+        }
+
+        user.name = data.name;
+        user.phone = data.phone;
+        user.address = data.address;
+        await user.save();
+
+        return user;
+    }
+
+    static async updateUserPassword(userId: number, oldPassword: string, newPassword: string) {
+        const user = await User.scope("withPassword").findByPk(userId); if (!user) {
+            throw new UnauthorizedError('User not found');
+        }
+        const isValid = await this.validatePassword(oldPassword, user.password);
+        if (!isValid) {
+            throw new UnauthorizedError('Invalid old password');
+        }
+
+        user.password = newPassword;
+        await user.save();
+
+        return user;
     }
 
     static async createUserWithGoogle(data: CreateUserDTO) {
@@ -158,6 +195,8 @@ class AuthService {
             attributes: [
                 "id",
                 "name",
+                "phone",
+                "address",
                 "email",
                 "role",
                 "phone",

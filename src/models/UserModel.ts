@@ -69,6 +69,11 @@ export class User extends Model {
 
     @Column({
         type: DataType.STRING,
+    })
+    declare address: string;
+
+    @Column({
+        type: DataType.STRING,
         allowNull: false,
     })
     declare password: string;
