@@ -100,7 +100,7 @@ class CartService {
 
             await t.commit();
 
-            return cartItem; 
+            return cartItem;
 
         } catch (err) {
             await t.rollback();
@@ -110,12 +110,12 @@ class CartService {
     static async getMyCart(userId: number) {
 
         const key = `cart:user:${userId}`;
-        console.log("key", key);
         const cart = await Cart.findAll({
             where: { userId, isActive: true },
             attributes: [
                 "id",
                 "productId",
+                [Sequelize.col("product.image"), "image"],
                 [Sequelize.col("product.name"), "productName"],
                 "quantity",
                 "price",
@@ -136,7 +136,7 @@ class CartService {
                 hashData[item.id] = JSON.stringify(item);
             });
             await redisClient.hmset(key, hashData);
-            await redisClient.expire(key, 600);
+            await redisClient.expire(key, 300);
         }
         return cart;
     }

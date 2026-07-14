@@ -10,7 +10,6 @@ class ProductController {
         const userId = req.user!.id;
         const farmId = req.user!.farmId;
         const file = req.file;
-       console.log("++++++++++++++++++++++++++++++++++++++++++++++++++");
         if (!file) {
             return res.status(400).json({
                 success: false,
@@ -19,9 +18,6 @@ class ProductController {
         }
         const result: any = await uploadToCloudinary(file);
         const image = result.url;
-        console.log("++++++++++++++++++++++++++++++++++++++++++++++++++");
-        console.log("result", result);
-        console.log("++++++++++++++++++++++++++++++++++++++++++++++++++");
 
         await ProductService.createProduct({
             userId,

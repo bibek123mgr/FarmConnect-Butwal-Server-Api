@@ -252,8 +252,7 @@ class RecommendationController {
     async autocorrectSearch(req: Request, res: Response) {
         try {
             const { keyword } = req.query;
-            console.log(req.query);
-            console.log(keyword);
+          
             if (!keyword) {
                 res.status(400).json({
                     success: false,
