@@ -516,7 +516,7 @@ class OrderService {
         await redisClient.hset(`order:details`,
             id.toString(), JSON.stringify(formattedItems));
 
-        await redisClient.expire(`order:details`, 600);
+        await redisClient.expire(`order:details`, 300);
         return formattedItems;
     }
 
@@ -591,7 +591,7 @@ class OrderService {
             JSON.stringify(order)
         );
 
-        await redisClient.expire("orders", 600);
+        await redisClient.expire("orders", 300);
 
         return order;
     }

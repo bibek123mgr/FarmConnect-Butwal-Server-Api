@@ -7,7 +7,7 @@ import OrderItem from "../../models/OrderItemModel";
 
 export interface ICreateCategory {
     name: string;
-    slug: string;
+    description?: string;
     image?: string;
     sortOrder?: number;
     createdBy: number;
@@ -15,7 +15,7 @@ export interface ICreateCategory {
 
 export interface IUpdateCategory {
     name?: string;
-    slug?: string;
+    description?: string;
     image?: string;
     sortOrder?: number;
     isActive?: boolean;
@@ -23,30 +23,32 @@ export interface IUpdateCategory {
 
 class ProductCategoryService {
     static async createCategory(data: ICreateCategory) {
-        return await Category.create({
+        const category = await Category.create({
             name: data.name,
-            slug: data.slug,
+            description: data.description,
             image: data.image,
             sortOrder: data.sortOrder || 0,
             createdBy: data.createdBy,
             isActive: true,
         });
+        return category;
+
     }
 
     static async getAllCategories() {
         const categories = await Category.findAll({
             where: { isActive: true },
-            attributes: ["id", "name", "image"],
+            attributes: ["id", "name", "description", "image"],
             order: [["sortOrder", "ASC"]],
         });
-        await redisClient.set("categories:all", JSON.stringify(categories), "EX", 600);
+        await redisClient.set("categories:all", JSON.stringify(categories), "EX", 300);
         return categories;
     }
 
     static async getAllMyCategories() {
         const categories = await Category.findAll({
             where: { isActive: true },
-            attributes: ["id", "name", "slug", "image", "sortOrder"],
+            attributes: ["id", "name", "description", "image", "sortOrder"],
             order: [["sortOrder", "ASC"]],
         });
 
@@ -56,7 +58,7 @@ class ProductCategoryService {
     static async getCategoryById(id: number) {
         const category = await Category.findOne({
             where: { id, isActive: true },
-            attributes: ["id", "name", "slug", "image", "sortOrder"],
+            attributes: ["id", "name","description", "image", "sortOrder"],
         });
         if (!category) {
             throw new NotFoundError("Category not found");
@@ -133,7 +135,7 @@ class ProductCategoryService {
                 order: [[Sequelize.literal("totalSold"), "DESC"]],
                 limit: 1,
             })
-    ]);
+        ]);
 
         const topCategoryByProduct = topProductCategory[0];
         const topCategoryBySales = topSellingCategory[0];

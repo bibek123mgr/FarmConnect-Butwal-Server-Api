@@ -7,6 +7,7 @@ import ProductCategoryValidation from "../validations/ProductCategoryValidation"
 import ProductCategoryController from "../controllers/admin/ProductCategoryController";
 import { Auth } from "../middlewares/Auth";
 import ProductCategoryRedisMiddleware from "../middlewares/ProductCategoryRedisMiddleware.";
+import { upload } from "../middlewares/MulterConfig";
 
 const productCategoryRedisMiddleware = new ProductCategoryRedisMiddleware();
 
@@ -16,6 +17,7 @@ router
         Auth,
         validate(ProductCategoryValidation.createCategorySchema),
         productCategoryRedisMiddleware.clearProductCategoryCache(),
+        upload.single("image"),
         ProductCategoryController.create
     )
     .get(

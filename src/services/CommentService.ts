@@ -52,7 +52,7 @@ class CommentService {
         await redisClient.set(
             `product:comments:${productId}`,
             JSON.stringify(comments),
-            "EX", 600
+            "EX", 300
 
         );
 
@@ -96,7 +96,7 @@ class CommentService {
         }
 
         await comment.update({ isActive: false });
-         await redisClient.del(`product:comments:${comment.productId}`);
+        await redisClient.del(`product:comments:${comment.productId}`);
         return true;
     }
 }

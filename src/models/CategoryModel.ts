@@ -31,10 +31,8 @@ export class Category extends Model {
     // Slug (for API / SEO)
     @Column({
         type: DataType.STRING,
-        unique: true,
-        allowNull: false,
     })
-    declare slug: string;
+    declare description: string;
 
     // Optional icon/image
     @Column({

@@ -77,7 +77,7 @@ class FarmService {
                 type: QueryTypes.SELECT,
             })
 
-        await redisClient.set("farms:topfarms", JSON.stringify(farms), "EX", 600);
+        await redisClient.set("farms:topfarms", JSON.stringify(farms), "EX", 300);
         return farms;
     }
 

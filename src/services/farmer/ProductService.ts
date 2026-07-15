@@ -192,7 +192,7 @@ class ProductService {
 
         const cacheKey = `products:stock:page=${pageNumber}:limit=${limitNumber}:name=${productname || "all"}:category=${category || "all"}:from=${fromPrice ?? 0}:to=${toPrice ?? "max"}:store=${store || "all"}`;
 
-        await redisClient.set(cacheKey, JSON.stringify(products), "EX", 600);
+        await redisClient.set(cacheKey, JSON.stringify(products), "EX", 300);
 
         return products;
     }
@@ -239,7 +239,7 @@ class ProductService {
         ) t
     `);
 
-        await redisClient.set("products:topsellingproducts", JSON.stringify(products[0]), "EX", 600);
+        await redisClient.set("products:topsellingproducts", JSON.stringify(products[0]), "EX", 300);
         return products[0];
     }
 

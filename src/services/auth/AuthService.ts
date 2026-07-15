@@ -212,7 +212,7 @@ class AuthService {
                 }
             ]
         });
-        await redisClient.set(`user:profile:${id}`, JSON.stringify(user), "EX", 600);
+        await redisClient.set(`user:profile:${id}`, JSON.stringify(user), "EX", 300);
         return user;
     }
 
