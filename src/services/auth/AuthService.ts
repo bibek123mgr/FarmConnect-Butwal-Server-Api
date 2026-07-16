@@ -216,6 +216,13 @@ class AuthService {
         return user;
     }
 
+    static async getUserEmailAddressById(id: number) {
+        const user = await User.findByPk(id, {
+            attributes: ["email"]
+        });
+        return user?.email;
+    }
+
     static async getAllUsers() {
         const users = await User.findAll({
             attributes: [

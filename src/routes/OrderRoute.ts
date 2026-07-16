@@ -24,6 +24,7 @@ router
         OrderController.getAllAdminOrders
     )
 
+
 router
     .route("/orders/my")
     .get(
@@ -64,6 +65,12 @@ router
         Auth,
         orderRedisMiddleware.getCachedOrderData(),
         OrderController.getById
+    )
+    .delete(
+        Auth,
+        orderRedisMiddleware.clearCache(),
+        productStockRedisMiddleware.clearProductStockCache(),
+        OrderController.delete
     )
     .put(
         Auth,

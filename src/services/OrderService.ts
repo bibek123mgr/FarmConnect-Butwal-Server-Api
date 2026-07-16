@@ -78,6 +78,7 @@ class OrderService {
                 }
                 const farmId = product.farmId;
                 const farmerId = product.farmerId;
+                farmerIds.add(farmerId);
                 const totalAmount = item.rate * item.quantity;
 
                 if (!farmerWiseTotals.has(farmId)) {
@@ -254,7 +255,6 @@ class OrderService {
             payment.status = PaymentStatus.PAID;
 
             const farmerIds = new Set<number>();
-
             await Promise.all([
                 order.save({ transaction }),
                 payment.save({ transaction }),
@@ -273,7 +273,6 @@ class OrderService {
                     if (!product) {
                         throw new NotFoundError("Product not found");
                     }
-
                     farmerIds.add(product.farmerId);
 
                     await ActualStock.increment(
@@ -414,7 +413,6 @@ class OrderService {
 
     static async getOrderDetailsForAdmin(farmId: number, orderId: number) {
 
-        console.log("orderId", orderId, "farmId", farmId);
         const orders = await VendorOrder.findOne({
             where: {
                 id: orderId,
@@ -541,7 +539,6 @@ class OrderService {
     }
 
     static async getAllAdminOrders(farmId: number) {
-        console.log("farmId", farmId);
         const orders = await VendorOrder.findAll({
             where: { farmId },
 

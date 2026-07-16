@@ -7,6 +7,8 @@ import { PaymentMethod, PaymentStatus } from "../models/PaymentModel";
 import Payment from "../middlewares/Payment";
 import CartService from "../services/CartServices";
 import redisClient from "../redis/redis";
+import { sendEmail } from "../utils/nodemailerService";
+import AuthService from "../services/auth/AuthService";
 
 class OrderController {
 
@@ -23,10 +25,15 @@ class OrderController {
         await redisClient.del(key);
         await CartService.clearCart(req.user!.id);
 
+
         switch (req.body.paymentMethod) {
             case PaymentMethod.COD:
                 if (order.success) {
-                    order.farmerIds.forEach((farmerId: number) => {
+                    console.log("Order created successfully", order);
+                    order.farmerIds.forEach(async (farmerId: number) => {
+                        const farmerEmail = await AuthService.getUserEmailAddressById(farmerId);
+                        console.log("farmerId", farmerId);
+                        console.log("farmerEmail", farmerEmail);
                         sendNotificationToUser(
                             farmerId.toString(),
                             "newOrder",
@@ -37,8 +44,16 @@ class OrderController {
                                 type: "ORDER"
                             }
                         );
-                    });
 
+                        if (farmerEmail) {
+                            sendEmail(
+                                farmerEmail,
+                                "New Order Received",
+                                `You have received a new order #${order.orderId}. Please check your dashboard for more details.`
+                            );
+                        }
+                    });
+                    const userEmail = await AuthService.getUserEmailAddressById(order.userId);
                     sendNotificationToUser(
                         order.userId.toString(),
                         "orderPlaced",
@@ -50,6 +65,14 @@ class OrderController {
                         }
                     );
 
+                    if (userEmail) {
+                        sendEmail(
+                            userEmail,
+                            "Order Placed Successfully",
+                            `Your order #${order.orderId} has been placed successfully. Please check your dashboard for more details.`
+                        );
+                    }
+
                 }
                 return res.status(201).json({
                     status: true,
@@ -60,6 +83,24 @@ class OrderController {
                 const khaltiResponse = await Payment.inititeKhaltiPayment(totalAmount);
                 await OrderService.updateGateWayReference(order.orderId, khaltiResponse.pidx);
                 await OrderService.updateGateWayReference(order.orderId, khaltiResponse.pidx);
+                order.farmerIds.forEach(async (farmerId: number) => {
+                    const farmerEmail = await AuthService.getUserEmailAddressById(farmerId);
+                    if (farmerEmail) {
+                        sendEmail(
+                            farmerEmail,
+                            "New Order Received",
+                            `You have received a new order #${order.orderId}. Please check your dashboard for more details.`
+                        );
+                    }
+                });
+                const userEmaill = await AuthService.getUserEmailAddressById(order.userId);
+                if (userEmaill) {
+                    sendEmail(
+                        userEmaill,
+                        "Order Placed Successfully",
+                        `Your order #${order.orderId} has been placed successfully. Please check your dashboard for more details.`
+                    );
+                }
                 return res.status(200).json({
                     status: true,
                     message: "Khalti Payment Initiated",
@@ -68,6 +109,24 @@ class OrderController {
             case PaymentMethod.ESEWA:
                 const esewaResponse = await Payment.inititeEsewaPayment(totalAmount);
                 await OrderService.updateGateWayReference(order.orderId, esewaResponse.transaction_uuid);
+                order.farmerIds.forEach(async (farmerId: number) => {
+                    const farmerEmail = await AuthService.getUserEmailAddressById(farmerId);
+                    if (farmerEmail) {
+                        sendEmail(
+                            farmerEmail,
+                            "New Order Received",
+                            `You have received a new order #${order.orderId}. Please check your dashboard for more details.`
+                        );
+                    }
+                });
+                const userEmail = await AuthService.getUserEmailAddressById(order.userId);
+                if (userEmail) {
+                    sendEmail(
+                        userEmail,
+                        "Order Placed Successfully",
+                        `Your order #${order.orderId} has been placed successfully. Please check your dashboard for more details.`
+                    );
+                }
                 return res.status(201).json(
                     {
                         status: true,
@@ -136,7 +195,7 @@ class OrderController {
 
     static getAll = asyncHandler(async (req: AuthRequest, res: Response) => {
         const orders = await OrderService.getAllOrders(req.user!.id);
-       return res.status(200).json({ status: true, data: orders });
+        return res.status(200).json({ status: true, data: orders });
     });
 
     static getAllAdminOrders = asyncHandler(async (req: AuthRequest, res: Response) => {
@@ -165,7 +224,7 @@ class OrderController {
     static getOrderDetailsForAdmin = asyncHandler(async (req: AuthRequest, res: Response) => {
         const id = Number(req.params.id);
         const farmId = req.user?.farmId;
-        const orders = await OrderService.getOrderDetailsForAdmin(farmId!,id);
+        const orders = await OrderService.getOrderDetailsForAdmin(farmId!, id);
         res.status(200).json({ status: true, data: orders });
     });
 
