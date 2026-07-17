@@ -254,16 +254,20 @@ class ProductService {
 
         const pageNumber = Number(page) || 1;
         const limitNumber = Number(limit) || 20;
-
         const offset = (pageNumber - 1) * limitNumber;
 
-        let whereConditions = `WHERE p.isActive = 1 AND p.farmerId = :userId`;
+        let whereConditions = `WHERE p.isActive = 1`;
 
-        let replacements: any = {
-            userId,
+        const replacements: any = {
             limit: limitNumber,
             offset
         };
+
+        // Only filter by farmerId if userId is not 0
+        if (Number(userId) > 0) {
+            whereConditions += ` AND p.farmerId = :userId`;
+            replacements.userId = Number(userId);
+        }
 
         if (productname && productname !== "all") {
             whereConditions += ` AND p.name LIKE :productname`;
@@ -278,22 +282,25 @@ class ProductService {
         const products = await sequelize.query(
             `
         SELECT 
-            p.id, 
-            p.name, 
-            p.description, 
-            p.unit, 
-            COALESCE(pp.price, p.rate) as rate, 
-            p.farmId, 
+            p.id,
+            p.name,
+            p.description,
+            p.unit,
+            COALESCE(pp.price, p.rate) AS rate,
+            p.farmId,
             p.categoryId,
             p.image,
-            f.farmName, 
-            c.name as categoryName,
-            p.quantity as OpeningStock,
-            COALESCE(SUM(
-                a.openingStock + a.production - a.sales + a.salesReturn 
-                - a.damage - a.chalan + a.chalanReturn - a.reserveQuantity
-            ), 0) AS quantity
-        FROM products p 
+            f.farmName,
+            c.name AS categoryName,
+            p.quantity AS OpeningStock,
+            COALESCE(
+                SUM(
+                    a.openingStock + a.production - a.sales + a.salesReturn
+                    - a.damage - a.chalan + a.chalanReturn - a.reserveQuantity
+                ),
+                0
+            ) AS quantity
+        FROM products p
         LEFT JOIN actual_stock a ON p.id = a.productId
         INNER JOIN farms f ON p.farmId = f.id
         LEFT JOIN categories c ON p.categoryId = c.id
@@ -311,7 +318,7 @@ class ProductService {
 
         const totalResult: any = await sequelize.query(
             `
-        SELECT COUNT(*) as total
+        SELECT COUNT(*) AS total
         FROM products p
         ${whereConditions}
         `,
@@ -322,7 +329,6 @@ class ProductService {
         );
 
         const totalProducts = Number(totalResult[0].total);
-
         const totalPages = Math.ceil(totalProducts / limitNumber);
 
         return {

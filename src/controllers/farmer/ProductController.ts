@@ -57,7 +57,9 @@ class ProductController {
     });
 
     static getAllMyProducts = asyncHandler(async (req: AuthRequest, res: Response) => {
-        const userId = req.user!.id
+        const userRole = req.user!.role
+        const userId = userRole === "farmer" ? req.user!.id : 0
+        
         const data = req.query
         const products = await ProductService.getAllMyProducts({
             ...data,
