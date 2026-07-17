@@ -60,19 +60,6 @@ export class Damage extends Model {
     declare quantity: number;
 
     @Column({
-        type: DataType.ENUM(
-            "WEATHER",
-            "PEST",
-            "TRANSPORT",
-            "STORAGE",
-            "EXPIRED",
-            "OTHER"
-        ),
-        allowNull: false,
-    })
-    declare reason: string;
-
-    @Column({
         type: DataType.DECIMAL(10, 2),
         allowNull: true,
     })

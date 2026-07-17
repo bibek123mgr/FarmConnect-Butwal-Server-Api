@@ -12,8 +12,6 @@ interface CreateDamageDTO {
     farmId: number;
     userId: number;
     quantity: number;
-    reason: string;
-    lossAmount?: number;
     remarks?: string;
 }
 
@@ -33,8 +31,7 @@ class DamageService {
                 farmId: data.farmId,
                 userId: data.userId,
                 quantity: data.quantity,
-                reason: data.reason,
-                lossAmount: data.lossAmount,
+                lossAmount: product.rate * data.quantity,
                 remarks: data.remarks
             }, { transaction: t });
 
@@ -44,8 +41,7 @@ class DamageService {
                 },
                 {
                     where: {
-                        productId: data.productId,
-                        farmId: data.farmId
+                        productId: data.productId
                     },
                     transaction: t
                 }
@@ -62,7 +58,7 @@ class DamageService {
                 chalanReturn: 0,
                 rate: 0,
                 reserveQuantity: 0,
-                amount: data.lossAmount || 0,
+                amount: product.rate * data.quantity || 0,
                 farmId: data.farmId,
                 createdBy: data.userId,
                 comesFrom: comesFrom.DAMAGE,
@@ -95,7 +91,6 @@ class DamageService {
                 productId: data.productId,
                 farmId: data.farmId,
                 quantity: data.quantity,
-                reason: data.reason,
                 lossAmount: data.lossAmount,
                 remarks: data.remarks
             }, { transaction: t });
@@ -148,7 +143,6 @@ class DamageService {
                 [Sequelize.col("farm.farmName"), "farmName"],
                 "quantity",
                 "lossAmount",
-                "reason",
                 "remarks",
                 "createdAt"
             ],
@@ -171,7 +165,6 @@ class DamageService {
                 [Sequelize.col("farm.farmName"), "farmName"],
                 "quantity",
                 "lossAmount",
-                "reason",
                 "remarks",
                 "createdAt"
             ],
@@ -212,6 +205,34 @@ class DamageService {
             await t.rollback();
             throw error;
         }
+    }
+
+    static async getDamageStats(userId: number) {
+        const whereCondition: any = {
+            isActive: true,
+        };
+
+        if (userId > 0) {
+            whereCondition.userId = userId;
+        }
+
+        const [totalLossAmount, totalDamages, totalQuantity] = await Promise.all([
+            Damage.sum("lossAmount", {
+                where: whereCondition,
+            }),
+            Damage.count({
+                where: whereCondition,
+            }),
+            Damage.sum("quantity", {
+                where: whereCondition,
+            }),
+        ]);
+
+        return {
+            totalLossAmount: Number(totalLossAmount || 0),
+            totalDamages,
+            totalQuantity: Number(totalQuantity || 0),
+        };
     }
 }
 

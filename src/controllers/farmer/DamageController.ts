@@ -6,12 +6,12 @@ import DamageService from "../../services/farmer/DamageService";
 class DamageController {
 
     static create = asyncHandler(async (req: AuthRequest, res: Response) => {
+        console.log(req.body);
+        console.log(req.user)
         await DamageService.createDamage({
             productId: req.body.productId,
-            farmId: req.body.farmId,
+            farmId: req.user!.farmId!,
             quantity: req.body.quantity,
-            reason: req.body.reason,
-            lossAmount: req.body.lossAmount,
             remarks: req.body.remarks,
             userId: req.user!.id
         });
@@ -55,6 +55,16 @@ class DamageController {
         res.status(200).json({
             status: true,
             message: "Damage deleted successfully"
+        });
+    });
+
+    static getDamageStats = asyncHandler(async (req: AuthRequest, res: Response) => {
+        const userId= req.user?.role === "farmer" ? req.user.id : 0;
+        const data = await DamageService.getDamageStats(userId);
+
+        res.status(200).json({
+            status: true,
+            data
         });
     });
 }

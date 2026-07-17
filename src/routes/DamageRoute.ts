@@ -11,10 +11,15 @@ const router = Router();
 router.use(Auth);
 router
     .route("/damages")
-    .post(validate(DamageValidation.create),
+    .post(
+        validate(DamageValidation.create),
         productStockRedisMiddleware.clearProductStockCache(),
         DamageController.create)
     .get(DamageController.getAll);
+
+router
+    .route("/damages/stats")
+    .get(DamageController.getDamageStats);
 
 router
     .route("/damages/:id")
@@ -26,5 +31,7 @@ router
         productStockRedisMiddleware.clearProductStockCache(),
         DamageController.delete
     );
+
+
 
 export default router;

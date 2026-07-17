@@ -16,6 +16,15 @@ class ProductController {
                 message: "Image is required",
             });
         }
+
+        const checkIsSameProductExist = await ProductService.checkIsSameProductExist(userId, name);
+        if (checkIsSameProductExist) {
+            return res.status(400).json({
+                success: false,
+                message: "Product already exist",
+            });
+        }
+
         const result: any = await uploadToCloudinary(file);
         const image = result.url;
 
@@ -59,7 +68,7 @@ class ProductController {
     static getAllMyProducts = asyncHandler(async (req: AuthRequest, res: Response) => {
         const userRole = req.user!.role
         const userId = userRole === "farmer" ? req.user!.id : 0
-        
+
         const data = req.query
         const products = await ProductService.getAllMyProducts({
             ...data,

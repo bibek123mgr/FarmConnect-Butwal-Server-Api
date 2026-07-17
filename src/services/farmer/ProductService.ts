@@ -98,6 +98,20 @@ class ProductService {
             throw error;
         }
     }
+
+    static async checkIsSameProductExist(userId: number, name: string) {
+        const product = await Product.findOne({
+            where: {
+                farmerId: userId,
+                name: name
+            }
+        });
+        if (product) {
+            return true;
+        }
+        return false;
+    }
+
     static async getAllProducts(data: IgetAllProductsFilter) {
         let {
             productname,
