@@ -2,15 +2,28 @@ import { Response, Request } from "express";
 import { AuthRequest } from "../../middlewares/Auth";
 import FarmService from "../../services/farmer/FarmService";
 import { asyncHandler } from "../../utils/asyncHandler";
+import { uploadToCloudinary } from "../../middlewares/MulterConfig";
 
 class FarmController {
     static create = asyncHandler(async (req: AuthRequest, res: Response) => {
         const userId = req.user!.id;
+        const file = req.file;
+        if (!file) {
+            return res.status(400).json({
+                success: false,
+                message: "Image is required",
+            });
+        }
+        const result: any = await uploadToCloudinary(file);
+        const image = result.url;
 
-        const farm = await FarmService.createFarm({
+        const dataObj = {
             userId,
+            image,
             ...req.body,
-        });
+        }
+
+        const farm = await FarmService.createFarm(dataObj);
 
         return res.status(201).json({
             status: true,

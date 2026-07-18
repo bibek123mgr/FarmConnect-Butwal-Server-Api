@@ -115,8 +115,9 @@ class ProductController {
         });
     });
 
-    static getStats = asyncHandler(async (_req: Request, res: Response) => {
-        const data = await ProductService.getStats();
+    static getStats = asyncHandler(async (req: AuthRequest, res: Response) => {
+        const farmId = req.user?.role === "farmer" ? req.user!.farmId : 0
+        const data = await ProductService.getStats(farmId);
         return res.status(200).json({
             status: true,
             message: "Stats fetched successfully",

@@ -9,6 +9,7 @@ import CartService from "../services/CartServices";
 import redisClient from "../redis/redis";
 import { sendEmail } from "../utils/nodemailerService";
 import AuthService from "../services/auth/AuthService";
+import { UserRole } from "../models/UserModel";
 
 class OrderController {
 
@@ -199,13 +200,7 @@ class OrderController {
     });
 
     static getAllAdminOrders = asyncHandler(async (req: AuthRequest, res: Response) => {
-        const farmId = req.user?.farmId;
-        if (!farmId) {
-            return res.status(400).json({
-                status: false,
-                message: "Invalid user details"
-            });
-        }
+        const farmId = req.user?.role === UserRole.FARMER ? req.user?.farmId : 0
         const params = req.query;
         const { data, pagination,stats } = await OrderService.getAllAdminOrders(params, farmId!);
         return res.status(200).json({
@@ -226,13 +221,12 @@ class OrderController {
 
     static getOrderDetailsForAdmin = asyncHandler(async (req: AuthRequest, res: Response) => {
         const id = Number(req.params.id);
-        const farmId = req.user?.farmId; console.log(farmId)
+        const farmId = req.user?.farmId;
 
         let orders;
         if (farmId) {
             orders = await OrderService.getOrderDetailsForAdmin(farmId!, id);
         } else {
-
             orders = await OrderService.getOrderDetailsForSuperAdmin(id);
         }
         res.status(200).json({ status: true, data: orders });

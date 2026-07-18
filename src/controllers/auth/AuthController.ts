@@ -198,10 +198,13 @@ class AuthController {
     static updateUserProfile = asyncHandler(async (req: AuthRequest, res: Response) => {
         const userId = req.user?.id as number;
         const data = req.body;
+        
         const jsonObject = {
             ...data,
             id: userId
         }
+
+        console.log(jsonObject);
         const updatedUser = await AuthService.updateUserProfile(jsonObject);
         return res.status(200).json({
             status: true,

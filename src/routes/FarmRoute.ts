@@ -6,6 +6,7 @@ import { Auth } from '../middlewares/Auth';
 import FarmValidation from '../validations/FarmValidation';
 import { validate } from '../utils/validation.middleware';
 import FarmRedisMiddleware from '../middlewares/FarmRedisMiddleware';
+import { upload } from '../middlewares/MulterConfig';
 
 // router
 //     .route("/farms")
@@ -16,7 +17,9 @@ import FarmRedisMiddleware from '../middlewares/FarmRedisMiddleware';
 
 router
     .route("/register")
-    .post(Auth, validate(FarmValidation.createFarmSchema), FarmController.create);
+    .post(Auth, validate(FarmValidation.createFarmSchema), 
+    upload.single("image"),
+    FarmController.create);
 
 router
     .route("/top-farms")

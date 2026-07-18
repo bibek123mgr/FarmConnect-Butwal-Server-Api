@@ -240,7 +240,8 @@ class OrderService {
                 }),
                 await Payment.findOne({
                     where: { gatewayReferenceId: gatewayReferenceId }
-                })
+                }),
+
             ])
 
             if (!order) throw new NotFoundError("Order not found");
@@ -252,6 +253,7 @@ class OrderService {
             })
 
             order.status = OrderStatus.CONFIRMED;
+            order.paymentStatus = PaymentStatus.PAID;
             payment.status = PaymentStatus.PAID;
 
             const farmerIds = new Set<number>();
@@ -339,6 +341,17 @@ class OrderService {
                 { transaction }
             );
             await transaction.commit();
+            await VendorOrder.update({
+                status: OrderStatus.CONFIRMED,
+                paymentStatus: PaymentStatus.PAID
+            },
+                {
+                    where: {
+                        orderId: order.id
+                    },
+                    transaction
+                }
+            )
             return {
                 farmerIds: Array.from(farmerIds),
                 orderId: order.id,
@@ -412,10 +425,9 @@ class OrderService {
     }
 
     static async getOrderDetailsForAdmin(farmId: number, orderId: number) {
-
         const orders = await VendorOrder.findOne({
             where: {
-                id: orderId,
+                orderId,
                 farmId
             },
 
@@ -469,7 +481,6 @@ class OrderService {
             id: orders.id,
             totalAmount: orders.totalAmount,
             createdAt: orders.createdAt,
-
             address: orders.order?.address,
             paymentMethod: orders.order?.paymentMethod,
             paymentStatus: orders.paymentStatus,
@@ -638,7 +649,7 @@ class OrderService {
         return orders;
     }
 
-    static async getAllAdminOrders(params: any, farmId?: number) {
+    static async getAllAdminOrders(params: any, farmId: number) {
         const {
             limit: rawLimit = 10,
             page: rawPage = 1,
@@ -651,7 +662,7 @@ class OrderService {
         const offset = (page - 1) * limit;
 
         // FARMER ORDERS
-        if (farmId) {
+        if (farmId > 0) {
             const whereConditions: string[] = ["b.farmId = :farmId"];
             const replacements: any = { farmId, limit, offset };
 

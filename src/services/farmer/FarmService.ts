@@ -3,6 +3,7 @@ import sequelize from "../../config/database";
 import Farm from "../../models/FarmModel";
 import { NotFoundError } from "../../utils/errors";
 import redisClient from "../../redis/redis";
+import User from "../../models/UserModel";
 
 export interface ICreateFarm {
     userId: number;
@@ -11,7 +12,7 @@ export interface ICreateFarm {
     province?: string;
     district?: string;
     address?: string;
-    logo?: string;
+    image?: string;
     panNo?: string;
     vatNo?: string;
 }
@@ -31,19 +32,30 @@ export interface IUpdateFarm {
 
 class FarmService {
     static async createFarm(data: ICreateFarm) {
-        return await Farm.create({
+        const transaction = await sequelize.transaction();
+        await Farm.create({
             userId: data.userId,
             farmName: data.farmName,
             description: data.description,
             province: data.province,
             district: data.district,
             address: data.address,
-            logo: data.logo,
+            logo: data.image,
             panNo: data.panNo,
             vatNo: data.vatNo,
             isActive: true,
             isVerified: false,
-        });
+        }
+            , { transaction });
+
+        await User.update(
+            {
+                role: "farmer"
+            }
+            , { where: { id: data.userId }, transaction }
+        )
+        await transaction.commit();
+        return true;
     }
 
     static async getAllFarms() {

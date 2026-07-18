@@ -479,7 +479,7 @@ class ProductService {
         }
     }
 
-    static async getStats() {
+    static async getStats(farmId: number) {
         try {
             const stockExpression = Sequelize.literal(`
             openingStock
@@ -492,37 +492,39 @@ class ProductService {
             - reserveQuantity
         `);
 
+            const buildWhere = (extra: any = {}) => {
+                const where: any = { ...extra };
+                if (farmId && farmId !== 0) {
+                    where.farmId = farmId;
+                }
+                return where;
+            };
+
             const [
                 totalProducts,
                 totalActiveProducts,
                 totalOutOfStockProduct,
                 totalLowStockProduct
             ] = await Promise.all([
-                Product.count(),
-                Product.count({ where: { isActive: true } }),
-
+                Product.count({ where: buildWhere() }),
+                Product.count({ where: buildWhere({ isActive: true }) }),
                 ActualStock.count({
                     where: Sequelize.where(stockExpression, { [Op.lte]: 0 }),
-                    include: [
-                        {
-                            model: Product,
-                            attributes: [],
-                            where: { isActive: true },
-                            required: true,
-                        },
-                    ],
+                    include: [{
+                        model: Product,
+                        attributes: [],
+                        required: true,
+                        where: buildWhere({ isActive: true })
+                    }]
                 }),
-
                 ActualStock.count({
                     where: Sequelize.where(stockExpression, { [Op.lte]: 10 }),
-                    include: [
-                        {
-                            model: Product,
-                            attributes: [],
-                            where: { isActive: true },
-                            required: true,
-                        },
-                    ],
+                    include: [{
+                        model: Product,
+                        attributes: [],
+                        required: true,
+                        where: buildWhere({ isActive: true })
+                    }]
                 }),
             ]);
 
