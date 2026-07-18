@@ -206,11 +206,14 @@ class OrderController {
                 message: "Invalid user details"
             });
         }
-        const orders = await OrderService.getAllAdminOrders(farmId!);
+        const params = req.query;
+        const { data, pagination,stats } = await OrderService.getAllAdminOrders(params, farmId!);
         return res.status(200).json({
             status: true,
             message: "Orders fetched successfully",
-            data: orders
+            data: data,
+            pagination,
+            stats
         });
     });
 
@@ -278,7 +281,7 @@ class OrderController {
         });
     })
 
-    static updateOrderPaymentStatus= asyncHandler(async (req: AuthRequest, res: Response) => {
+    static updateOrderPaymentStatus = asyncHandler(async (req: AuthRequest, res: Response) => {
         const farmId = req.user?.farmId;
         await OrderService.updateOrderPaymentStatus(Number(req.params.id), farmId, req.body.status);
         res.status(200).json({

@@ -11,7 +11,7 @@ import Stock, { comesFrom } from "../models/StockModel";
 import VendorOrder from "../models/VendorOrder";
 import redisClient from "../redis/redis";
 import { NotFoundError } from "../utils/errors";
-import { QueryTypes, Sequelize } from "sequelize";
+import { Op, QueryTypes, Sequelize } from "sequelize";
 
 interface CreateOrderDTO {
     customerId: number;
@@ -638,36 +638,122 @@ class OrderService {
         return orders;
     }
 
-    static async getAllAdminOrders(farmId?: number) {
+    static async getAllAdminOrders(params: any, farmId?: number) {
+        const {
+            limit: rawLimit = 10,
+            page: rawPage = 1,
+            orderId = "",
+            status = "",
+        } = params;
+
+        const limit = Number(rawLimit) || 10;
+        const page = Number(rawPage) || 1;
+        const offset = (page - 1) * limit;
+
+        // FARMER ORDERS
         if (farmId) {
+            const whereConditions: string[] = ["b.farmId = :farmId"];
+            const replacements: any = { farmId, limit, offset };
+
+            if (orderId) {
+                whereConditions.push("a.id LIKE :orderId");
+                replacements.orderId = `%${orderId}%`;
+            }
+
+            if (status) {
+                whereConditions.push("b.status = :status");
+                replacements.status = status;
+            }
+
+            const whereClause = whereConditions.join(" AND ");
+
+            // DATA
             const result = await sequelize.query(
                 `
-                SELECT 
-                    a.id,
-                    a.address,
-                    a.paymentMethod,
-                    b.paymentStatus,
-                    a.paymentMethod,
-                    b.status,
-                    b.totalAmount,
-                    a.createdAt
-                FROM orders a
-                INNER JOIN vendor_orders b ON a.id = b.orderId
-                WHERE b.farmId = :farmId
-                ORDER BY b.createdAt DESC
-                `,
+            SELECT 
+                a.id,
+                a.address,
+                a.paymentMethod,
+                b.paymentStatus,
+                b.status,
+                b.totalAmount,
+                a.createdAt
+            FROM orders a
+            INNER JOIN vendor_orders b ON a.id = b.orderId
+            WHERE ${whereClause}
+            ORDER BY b.createdAt DESC
+            LIMIT :limit OFFSET :offset
+            `,
+                {
+                    replacements,
+                    type: QueryTypes.SELECT,
+                }
+            );
+
+            // COUNT (respects filters, for pagination)
+            const { limit: _l, offset: _o, ...countReplacements } = replacements;
+
+            const countResult: any = await sequelize.query(
+                `
+            SELECT COUNT(*) as total
+            FROM orders a
+            INNER JOIN vendor_orders b ON a.id = b.orderId
+            WHERE ${whereClause}
+            `,
+                {
+                    replacements: countReplacements,
+                    type: QueryTypes.SELECT,
+                }
+            );
+
+            const total = Number(countResult[0].total);
+
+            // STATS — always scoped to farmId only, ignores search/status filters
+            // and pagination, so the dashboard shows the full picture.
+            const statsResult: any = await sequelize.query(
+                `
+            SELECT
+                COUNT(*) AS totalOrders,
+                SUM(CASE WHEN b.status = 'pending'   THEN 1 ELSE 0 END) AS pending,
+                SUM(CASE WHEN b.status = 'confirmed' THEN 1 ELSE 0 END) AS confirmed,
+                SUM(CASE WHEN b.status = 'shipped'   THEN 1 ELSE 0 END) AS shipped,
+                SUM(CASE WHEN b.status = 'delivered' THEN 1 ELSE 0 END) AS delivered,
+                SUM(CASE WHEN b.status = 'cancelled' THEN 1 ELSE 0 END) AS cancelled
+            FROM vendor_orders b
+            WHERE b.farmId = :farmId
+            `,
                 {
                     replacements: { farmId },
                     type: QueryTypes.SELECT,
                 }
             );
 
-            return result;
+            const stats = this.normalizeStats(statsResult[0]);
 
+            return {
+                data: result,
+                stats,
+                pagination: {
+                    total,
+                    page,
+                    limit,
+                    totalPages: Math.ceil(total / limit),
+                },
+            };
         }
 
-        // no farmId → pull everything directly from Order
-        const orders = await Order.findAll({
+        // ADMIN - ALL ORDERS
+        const where: any = {};
+
+        if (orderId) {
+            where.id = { [Op.like]: `%${orderId}%` };
+        }
+
+        if (status) {
+            where.status = status;
+        }
+
+        const { rows, count } = await Order.findAndCountAll({
             attributes: [
                 "id",
                 "totalAmount",
@@ -677,12 +763,52 @@ class OrderService {
                 "status",
                 "createdAt",
             ],
-
+            where,
+            limit,
+            offset,
             order: [["createdAt", "DESC"]],
             raw: true,
         });
 
-        return orders;
+        // STATS — full table, no filters/pagination applied
+        const statsRows: any = await Order.findAll({
+            attributes: [
+                "status",
+                [Sequelize.fn("COUNT", Sequelize.col("status")), "count"],
+            ],
+            group: ["status"],
+            raw: true,
+        });
+
+        const stats = this.normalizeStats(
+            statsRows.reduce((acc: any, row: any) => {
+                acc[row.status] = Number(row.count);
+                acc.totalOrders = (acc.totalOrders || 0) + Number(row.count);
+                return acc;
+            }, {})
+        );
+
+        return {
+            data: rows,
+            stats,
+            pagination: {
+                total: count,
+                page,
+                limit,
+                totalPages: Math.ceil(count / limit),
+            },
+        };
+    }
+
+    private static normalizeStats(raw: any) {
+        return {
+            totalOrders: Number(raw.totalOrders) || 0,
+            pending: Number(raw.pending) || 0,
+            confirmed: Number(raw.confirmed) || 0,
+            shipped: Number(raw.shipped) || 0,
+            delivered: Number(raw.delivered) || 0,
+            cancelled: Number(raw.cancelled) || 0,
+        };
     }
 
     static async getOrderById(id: number) {
