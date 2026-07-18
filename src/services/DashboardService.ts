@@ -160,7 +160,7 @@ class DashboardService {
     sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 6);
 
     const vendorOrderWhere = farmId && farmId > 0 ? { farmId } : {};
-    const productWhere = farmId && farmId > 0 ? { farmerId: farmId } : {};
+    const productWhere = farmId && farmId > 0 ? { farmId: farmId } : {};
 
     const [
         totalOrders,
@@ -214,7 +214,7 @@ class DashboardService {
                     ...(farmId && farmId > 0
                         ? {
                               where: {
-                                  farmerId: farmId,
+                                  farmId: farmId,
                               },
                           }
                         : {}),
@@ -259,7 +259,7 @@ class DashboardService {
                     ...(farmId && farmId > 0
                         ? {
                               where: {
-                                  farmerId: farmId,
+                                  farmId: farmId,
                               },
                           }
                         : {}),
