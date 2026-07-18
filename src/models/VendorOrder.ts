@@ -3,11 +3,21 @@ import Order from "./OrderModel";
 import Farm from "./FarmModel";
 import User from "./UserModel";
 import OrderItem from "./OrderItemModel";
+import { PaymentStatus } from "./PaymentModel";
+
+enum OrderStatus {
+    PENDING = "pending",
+    CONFIRMED = "confirmed",
+    SHIPPED = "shipped",
+    DELIVERED = "delivered",
+    CANCELLED = "cancelled",
+}
 
 @Table({
     timestamps: true,
     tableName: "vendor_orders"
 })
+
 export class VendorOrder extends Model {
 
     @Column({
@@ -62,6 +72,20 @@ export class VendorOrder extends Model {
 
     @HasMany(() => OrderItem)
     orderItems!: OrderItem[]
+
+    @Default(OrderStatus.PENDING)
+    @Column({
+        type: DataType.ENUM(...Object.values(OrderStatus)),
+        allowNull: false,
+    })
+    declare status: OrderStatus;
+
+    @Default(PaymentStatus.PENDING)
+    @Column({
+        type: DataType.ENUM(...Object.values(PaymentStatus)),
+        allowNull: false,
+    })
+    declare paymentStatus: PaymentStatus;
 
 }
 

@@ -50,12 +50,29 @@ router
     );
 
 router
+    .route("/orders/status/:id")
+    .patch(
+        Auth,
+        orderRedisMiddleware.clearCache(),
+        productStockRedisMiddleware.clearProductStockCache(),
+        OrderController.updateOrderStatusByFarmer
+    );
+
+
+router
+    .route("/orders/payment-status/:id")
+    .patch(
+        Auth,
+        OrderController.updateOrderPaymentStatus
+    );
+router
     .route("/orders/my/details/:id")
     .get(
         Auth,
         orderRedisMiddleware.getCachedOrderDataDetails(),
         OrderController.getOrderDetails
     );
+
 
 
 
@@ -80,6 +97,9 @@ router
         orderRedisMiddleware.clearIndividualCacheDetails(),
         productStockRedisMiddleware.clearProductStockCache(),
         OrderController.updateStatus)
+
+
+
 
 
 export default router;

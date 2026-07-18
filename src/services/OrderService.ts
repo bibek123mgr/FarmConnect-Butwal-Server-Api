@@ -11,7 +11,7 @@ import Stock, { comesFrom } from "../models/StockModel";
 import VendorOrder from "../models/VendorOrder";
 import redisClient from "../redis/redis";
 import { NotFoundError } from "../utils/errors";
-import { Sequelize } from "sequelize";
+import { QueryTypes, Sequelize } from "sequelize";
 
 interface CreateOrderDTO {
     customerId: number;
@@ -423,6 +423,8 @@ class OrderService {
                 "id",
                 "totalAmount",
                 "createdAt",
+                "paymentStatus",
+                "status"
             ],
 
             include: [
@@ -470,8 +472,8 @@ class OrderService {
 
             address: orders.order?.address,
             paymentMethod: orders.order?.paymentMethod,
-            paymentStatus: orders.order?.paymentStatus,
-            status: orders.order?.status,
+            paymentStatus: orders.paymentStatus,
+            status: orders.status,
 
             products: orders.orderItems.map((item: any) => ({
                 id: item.id,
@@ -485,6 +487,104 @@ class OrderService {
         };
     }
 
+
+    static async getOrderDetailsForSuperAdmin(orderId: number) {
+
+        const order = await Order.findOne({
+            where: { id: orderId },
+            attributes: [
+                "id",
+                "totalAmount",
+                "address",
+                "paymentMethod",
+                "paymentStatus",
+                "status",
+                "createdAt",
+            ],
+
+            include: [
+                {
+                    model: VendorOrder,
+                    as: "vendorOrders",
+                    required: false,
+                    where: { orderId }, // ensure vendor orders belong to this order
+                    attributes: [
+                        "id",
+                        "farmId",
+                        "totalAmount",
+                        "paymentStatus",
+                        "status",
+                        "createdAt",
+                    ],
+                    include: [
+                        {
+                            model: Farm,
+                            as: "farm",
+                            attributes: ["id", "farmName"],
+                        },
+                        {
+                            model: OrderItem,
+                            as: "orderItems",
+                            required: false,
+                            // enforce BOTH keys match, not just vendorOrderId
+                            where: Sequelize.where(
+                                Sequelize.col("vendorOrders->orderItems.orderId"),
+                                orderId
+                            ),
+                            attributes: [
+                                "id",
+                                "productId",
+                                "orderId",
+                                "vendorOrderId",
+                                "quantity",
+                                "price",
+                                "subtotal",
+                            ],
+                            include: [
+                                {
+                                    model: Product,
+                                    as: "product",
+                                    attributes: ["name", "image"],
+                                },
+                            ],
+                        },
+                    ],
+                },
+            ],
+        });
+
+        if (!order) return null;
+
+        return {
+            id: order.id,
+            totalAmount: order.totalAmount,
+            address: order.address,
+            paymentMethod: order.paymentMethod,
+            paymentStatus: order.paymentStatus,
+            status: order.status,
+            createdAt: order.createdAt,
+
+            vendors: order.vendorOrders.map((vendorOrder: any) => ({
+                vendorOrderId: vendorOrder.id,
+                farmId: vendorOrder.farmId,
+                farmName: vendorOrder.farm?.farmName,
+                totalAmount: Number(vendorOrder.totalAmount),
+                paymentStatus: vendorOrder.paymentStatus,
+                status: vendorOrder.status,
+                createdAt: vendorOrder.createdAt,
+
+                products: vendorOrder.orderItems.map((item: any) => ({
+                    id: item.id,
+                    productId: item.productId,
+                    productName: item.product?.name,
+                    productImage: item.product?.image,
+                    quantity: Number(item.quantity),
+                    price: Number(item.price),
+                    subtotal: Number(item.subtotal),
+                })),
+            })),
+        };
+    }
     static async getOrderDetails(id: number) {
         const orderItems = await OrderItem.findAll({
             where: { orderId: id },
@@ -538,26 +638,44 @@ class OrderService {
         return orders;
     }
 
-    static async getAllAdminOrders(farmId: number) {
-        const orders = await VendorOrder.findAll({
-            where: { farmId },
+    static async getAllAdminOrders(farmId?: number) {
+        if (farmId) {
+            const result = await sequelize.query(
+                `
+                SELECT 
+                    a.id,
+                    a.address,
+                    a.paymentMethod,
+                    b.paymentStatus,
+                    a.paymentMethod,
+                    b.status,
+                    b.totalAmount,
+                    a.createdAt
+                FROM orders a
+                INNER JOIN vendor_orders b ON a.id = b.orderId
+                WHERE b.farmId = :farmId
+                ORDER BY b.createdAt DESC
+                `,
+                {
+                    replacements: { farmId },
+                    type: QueryTypes.SELECT,
+                }
+            );
 
+            return result;
+
+        }
+
+        // no farmId → pull everything directly from Order
+        const orders = await Order.findAll({
             attributes: [
                 "id",
                 "totalAmount",
+                "address",
+                "paymentMethod",
+                "paymentStatus",
+                "status",
                 "createdAt",
-                [Sequelize.col("order.address"), "address"],
-                [Sequelize.col("order.paymentMethod"), "paymentMethod"],
-                [Sequelize.col("order.paymentStatus"), "paymentStatus"],
-                [Sequelize.col("order.status"), "status"],
-
-            ],
-
-            include: [
-                {
-                    model: Order,
-                    attributes: [],
-                }
             ],
 
             order: [["createdAt", "DESC"]],
@@ -678,6 +796,36 @@ class OrderService {
                         orderItemId: item.id
                     }
                 }, { transaction: t });
+
+                await ActualStock.increment(
+                    {
+                        salesReturn: item.quantity
+                    },
+                    {
+                        where: {
+                            productId: item.productId
+                        },
+                        transaction: t
+                    }
+                );
+
+                await Stock.create({
+                    productId: item.productId,
+                    openingStock: 0,
+                    sales: 0,
+                    salesReturn: item.quantity,
+                    damage: 0,
+                    chalan: 0,
+                    chalanReturn: 0,
+                    rate: item.rate,
+                    amount: item.amount,
+                    farmId: item.farmId,
+                    createdBy: item.createdBy,
+                    tableId: order.id,
+                    comesFrom: comesFrom.RESERVE,
+                    reserveQuantity: 0
+                }, { transaction: t });
+
             }
 
             await Notification.create({
@@ -696,19 +844,6 @@ class OrderService {
                 },
                 {
                     where: { orderId: id },
-                    transaction: t
-                }
-            );
-
-            await Stock.update(
-                {
-                    isActive: false,
-                },
-                {
-                    where: {
-                        tableId: id,
-                        comesFrom: comesFrom.SALES,
-                    },
                     transaction: t
                 }
             );
@@ -769,6 +904,88 @@ class OrderService {
         } catch (error) {
             await t.rollback();
             throw error;
+        }
+    }
+
+    static async updateOrderStatusByFarmer(id: number, farmId: number, status: OrderStatus) {
+        const order = await VendorOrder.findOne({
+            where: {
+                orderId: id,
+                farmId
+            }
+
+        });
+        if (!order) throw new NotFoundError("Order not found");
+
+        await order.update({ status });
+
+        const allOrders = await VendorOrder.findAll({
+            where: {
+                orderId: id,
+            },
+            attributes: ["status"],
+        });
+
+        // Check if every order has the same status
+        const allSameStatus = allOrders.every(
+            (o) => o.status === allOrders[0].status
+        );
+
+        if (allSameStatus) {
+            const parentOrder = await Order.findByPk(id);
+
+            if (parentOrder) {
+                await parentOrder.update({ status });
+            }
+        }
+
+        // if(status === OrderStatus.CANCELLED) {
+        //     this.cancelOrder(id);
+        // }
+        return order;
+    }
+
+    static async updateOrderPaymentStatus(id: number, farmId: number, status: PaymentStatus) {
+        try {
+            const order = await VendorOrder.findOne({
+                where: {
+                    orderId: id,
+                    farmId
+                }
+
+            });
+            if (!order) throw new NotFoundError("Order not found");
+
+            console.log(order);
+
+            await order.update({ paymentStatus: status });
+
+            const allOrders = await VendorOrder.findAll({
+                where: {
+                    orderId: id,
+                },
+                attributes: ["paymentStatus"],
+            });
+
+            // Check if every order has the same status
+            const allSameStatus = allOrders.every(
+                (o) => o.paymentStatus === allOrders[0].paymentStatus
+            );
+
+            if (allSameStatus) {
+                const parentOrder = await Order.findByPk(id);
+
+                if (parentOrder) {
+                    await parentOrder.update({ paymentStatus: status });
+                }
+            }
+
+            // if(status === OrderStatus.CANCELLED) {
+            //     this.cancelOrder(id);
+            // }
+            return order;
+        } catch (error) {
+            throw error
         }
     }
 }

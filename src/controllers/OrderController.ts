@@ -223,8 +223,15 @@ class OrderController {
 
     static getOrderDetailsForAdmin = asyncHandler(async (req: AuthRequest, res: Response) => {
         const id = Number(req.params.id);
-        const farmId = req.user?.farmId;
-        const orders = await OrderService.getOrderDetailsForAdmin(farmId!, id);
+        const farmId = req.user?.farmId; console.log(farmId)
+
+        let orders;
+        if (farmId) {
+            orders = await OrderService.getOrderDetailsForAdmin(farmId!, id);
+        } else {
+
+            orders = await OrderService.getOrderDetailsForSuperAdmin(id);
+        }
         res.status(200).json({ status: true, data: orders });
     });
 
@@ -240,7 +247,8 @@ class OrderController {
         );
     });
 
-    static updateStatus = asyncHandler(async (req: Request, res: Response) => {
+    static updateStatus = asyncHandler(async (req: AuthRequest, res: Response) => {
+        const farmId = req.user?.farmId;
         await OrderService.updateOrderStatus(
             Number(req.params.id),
             req.body.status
@@ -260,6 +268,24 @@ class OrderController {
             message: "Order cancelled successfully"
         });
     });
+
+    static updateOrderStatusByFarmer = asyncHandler(async (req: AuthRequest, res: Response) => {
+        const farmId = req.user?.farmId;
+        await OrderService.updateOrderStatusByFarmer(Number(req.params.id), farmId, req.body.status);
+        res.status(200).json({
+            status: true,
+            message: "Order status updated"
+        });
+    })
+
+    static updateOrderPaymentStatus= asyncHandler(async (req: AuthRequest, res: Response) => {
+        const farmId = req.user?.farmId;
+        await OrderService.updateOrderPaymentStatus(Number(req.params.id), farmId, req.body.status);
+        res.status(200).json({
+            status: true,
+            message: "Order status updated"
+        });
+    })
 }
 
 export default OrderController;
