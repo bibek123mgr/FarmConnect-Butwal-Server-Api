@@ -112,6 +112,105 @@ class ProductService {
         return false;
     }
 
+    // static async getAllProducts(data: IgetAllProductsFilter) {
+    //     let {
+    //         productname,
+    //         category,
+    //         page = 1,
+    //         limit = 20,
+    //         pricerangeFrom,
+    //         pricerangeTo,
+    //         store
+    //     } = data;
+
+    //     const pageNumber = Number(page) || 1;
+    //     const limitNumber = Number(limit) || 20;
+
+    //     const fromPrice =
+    //         pricerangeFrom !== undefined ? Number(pricerangeFrom) : undefined;
+
+    //     const toPrice =
+    //         pricerangeTo !== undefined && pricerangeTo !== "max"
+    //             ? Number(pricerangeTo)
+    //             : undefined;
+
+    //     const offset = (pageNumber - 1) * limitNumber;
+
+    //     let whereConditions = `WHERE p.isActive = 1`;
+    //     let replacements: any = {
+    //         limit: limitNumber,
+    //         offset
+    //     };
+
+    //     if (productname && productname !== "all") {
+    //         whereConditions += ` AND p.name LIKE :productname`;
+    //         replacements.productname = `%${productname}%`;
+    //     }
+
+    //     if (category && category !== "all") {
+    //         whereConditions += ` AND p.categoryId = :category`;
+    //         replacements.category = Number(category);
+    //     }
+
+    //     if (fromPrice !== undefined) {
+    //         whereConditions += ` AND COALESCE(pp.price, p.rate) >= :fromPrice`;
+    //         replacements.fromPrice = fromPrice;
+    //     }
+
+    //     if (toPrice !== undefined) {
+    //         whereConditions += ` AND COALESCE(pp.price, p.rate) <= :toPrice`;
+    //         replacements.toPrice = toPrice;
+    //     }
+
+    //     if (store !== undefined && store !== "all") {
+    //         whereConditions += ` AND p.farmId = :farmId`;
+    //         replacements.farmId = store;
+    //     }
+
+    //     console.log(whereConditions);
+
+    //     const products = await sequelize.query(
+    //         `
+    //     SELECT 
+    //         p.id, 
+    //         p.name,
+    //         p.image, 
+    //         p.description, 
+    //         p.unit, 
+    //         COALESCE(pp.price, p.rate) as rate, 
+    //         p.farmId, 
+    //         p.categoryId, 
+    //         f.farmName, 
+    //         c.name as categoryName,
+    //         COALESCE(SUM(
+    //             a.openingStock + a.production - a.sales + a.salesReturn 
+    //             - a.damage - a.chalan + a.chalanReturn - a.reserveQuantity
+    //         ), 0) AS quantity
+    //     FROM products p 
+    //     INNER JOIN actual_stock a ON p.id = a.productId
+    //     INNER JOIN farms f ON p.farmId = f.id
+    //     INNER JOIN categories c ON p.categoryId = c.id
+    //     LEFT JOIN product_prices pp ON p.id = pp.productId
+
+    //     ${whereConditions}
+
+    //     GROUP BY p.id
+    //     ORDER BY p.id DESC
+    //     LIMIT :limit OFFSET :offset
+    //     `,
+    //         {
+    //             replacements,
+    //             type: QueryTypes.SELECT
+    //         }
+    //     );
+
+    //     const cacheKey = `products:stock:page=${pageNumber}:limit=${limitNumber}:name=${productname || "all"}:category=${category || "all"}:from=${fromPrice ?? 0}:to=${toPrice ?? "max"}:store=${store || "all"}`;
+
+    //     await redisClient.set(cacheKey, JSON.stringify(products), "EX", 300);
+
+    //     return products;
+    // }
+
     static async getAllProducts(data: IgetAllProductsFilter) {
         let {
             productname,
@@ -137,7 +236,7 @@ class ProductService {
         const offset = (pageNumber - 1) * limitNumber;
 
         let whereConditions = `WHERE p.isActive = 1`;
-        let replacements: any = {
+        const replacements: any = {
             limit: limitNumber,
             offset
         };
@@ -164,34 +263,63 @@ class ProductService {
 
         if (store !== undefined && store !== "all") {
             whereConditions += ` AND p.farmId = :farmId`;
-            replacements.farmId = store;
+            replacements.farmId = Number(store);
         }
 
-        console.log(whereConditions);
-
-        const products = await sequelize.query(
+        // Get total products count
+        const [countResult]: any = await sequelize.query(
             `
-        SELECT 
-            p.id, 
-            p.name,
-            p.image, 
-            p.description, 
-            p.unit, 
-            COALESCE(pp.price, p.rate) as rate, 
-            p.farmId, 
-            p.categoryId, 
-            f.farmName, 
-            c.name as categoryName,
-            COALESCE(SUM(
-                a.openingStock + a.production - a.sales + a.salesReturn 
-                - a.damage - a.chalan + a.chalanReturn - a.reserveQuantity
-            ), 0) AS quantity
-        FROM products p 
+        SELECT COUNT(DISTINCT p.id) AS totalData
+        FROM products p
         INNER JOIN actual_stock a ON p.id = a.productId
         INNER JOIN farms f ON p.farmId = f.id
         INNER JOIN categories c ON p.categoryId = c.id
         LEFT JOIN product_prices pp ON p.id = pp.productId
-        
+
+        ${whereConditions}
+        `,
+            {
+                replacements,
+                type: QueryTypes.SELECT
+            }
+        );
+
+        const totalData = Number(countResult.totalData);
+        const totalPages = Math.ceil(totalData / limitNumber);
+
+        // Get paginated products
+        const products = await sequelize.query(
+            `
+        SELECT 
+            p.id,
+            p.name,
+            p.image,
+            p.description,
+            p.unit,
+            COALESCE(pp.price, p.rate) AS rate,
+            p.farmId,
+            p.categoryId,
+            f.farmName,
+            c.name AS categoryName,
+            COALESCE(
+                SUM(
+                    a.openingStock +
+                    a.production -
+                    a.sales +
+                    a.salesReturn -
+                    a.damage -
+                    a.chalan +
+                    a.chalanReturn -
+                    a.reserveQuantity
+                ),
+                0
+            ) AS quantity
+        FROM products p
+        INNER JOIN actual_stock a ON p.id = a.productId
+        INNER JOIN farms f ON p.farmId = f.id
+        INNER JOIN categories c ON p.categoryId = c.id
+        LEFT JOIN product_prices pp ON p.id = pp.productId
+
         ${whereConditions}
 
         GROUP BY p.id
@@ -204,11 +332,20 @@ class ProductService {
             }
         );
 
+        const result = {
+            data: products,
+            pagination: {
+                totalPages,
+                currentPage: pageNumber,
+                totalProducts: totalData
+            }
+        };
+
         const cacheKey = `products:stock:page=${pageNumber}:limit=${limitNumber}:name=${productname || "all"}:category=${category || "all"}:from=${fromPrice ?? 0}:to=${toPrice ?? "max"}:store=${store || "all"}`;
 
-        await redisClient.set(cacheKey, JSON.stringify(products), "EX", 300);
+        await redisClient.set(cacheKey, JSON.stringify(result), "EX", 300);
 
-        return products;
+        return result;
     }
 
     static async getTopSellingProducts() {

@@ -48,11 +48,12 @@ class ProductController {
 
     static getAll = asyncHandler(async (req: Request, res: Response) => {
         const data = req.query
-        const products = await ProductService.getAllProducts(data);
+        const { data: products, pagination } = await ProductService.getAllProducts(data);
 
         return res.status(200).json({
             status: true,
             data: products,
+            pagination: pagination
         });
     });
 

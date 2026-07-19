@@ -26,12 +26,13 @@ class ProductStockRedisMiddleware {
 
                 const cacheKey = `products:stock:page=${page}:limit=${limit}:name=${productname || "all"}:category=${category || "all"}:from=${pricerangeFrom || 0}:to=${pricerangeTo || "max"}:store=${store || "all"}`;
                 const cachedData = await redisClient.get(cacheKey);
-
                 if (cachedData) {
+                    const data = JSON.parse(cachedData);
+
                     return res.status(200).json({
                         status: true,
                         message: "Product stock fetched successfully",
-                        data: JSON.parse(cachedData),
+                        ...data
                     });
                 }
 
