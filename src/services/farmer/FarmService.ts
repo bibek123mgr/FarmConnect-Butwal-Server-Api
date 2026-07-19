@@ -4,6 +4,7 @@ import Farm from "../../models/FarmModel";
 import { NotFoundError } from "../../utils/errors";
 import redisClient from "../../redis/redis";
 import User from "../../models/UserModel";
+import Product from "../../models/ProductModel";
 
 export interface ICreateFarm {
     userId: number;
@@ -59,11 +60,35 @@ class FarmService {
     }
 
     static async getAllFarms() {
-        return await Farm.findAll({
+        const farms = await Farm.findAll({
             where: { isActive: true },
+            attributes: [
+                "id",
+                "farmName",
+                "logo",
+                [
+                    Sequelize.fn("COUNT", Sequelize.col("products.id")),
+                    "productCount",
+                ],
+            ],
+            include: [
+                {
+                    model: Product,
+                    attributes: [],
+                    where: {
+                        isActive: true,
+                    },
+                    required: false,
+                },
+            ],
+            group: ["Farm.id"],
             order: [["createdAt", "DESC"]],
         });
+
+        await redisClient.set("farms:all", JSON.stringify(farms), "EX", 300);
+        return farms;
     }
+
     static async getTopFarms() {
         const farms = await sequelize.query(`
             SELECT 
@@ -95,37 +120,37 @@ class FarmService {
         return farms;
     }
 
-   static async getFarmById(id: number) {
-    const farm = await Farm.findByPk(id, {
-        attributes: [
-            "id",
-            "userId",
-            [Sequelize.col("user.email"), "email"],
-            [Sequelize.col("user.phone"), "phone"],
-            "farmName",
-            "description",
-            "province",
-            "district",
-            "address",
-            "logo",
-            "panNo",
-            "vatNo",
-        ],
-        include: [
-            {
-                model: User,
-                attributes: []
-            }
-        ],
-        raw: true
-    });
+    static async getFarmById(id: number) {
+        const farm = await Farm.findByPk(id, {
+            attributes: [
+                "id",
+                "userId",
+                [Sequelize.col("user.email"), "email"],
+                [Sequelize.col("user.phone"), "phone"],
+                "farmName",
+                "description",
+                "province",
+                "district",
+                "address",
+                "logo",
+                "panNo",
+                "vatNo",
+            ],
+            include: [
+                {
+                    model: User,
+                    attributes: []
+                }
+            ],
+            raw: true
+        });
 
-    if (!farm) {
-        throw new NotFoundError("Farm not found");
+        if (!farm) {
+            throw new NotFoundError("Farm not found");
+        }
+
+        return farm;
     }
-
-    return farm;
-}
 
     static async getFarmsByUser(userId: number) {
         return await Farm.findAll({

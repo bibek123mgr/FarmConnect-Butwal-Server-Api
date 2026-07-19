@@ -21,7 +21,8 @@ router
         ProductCategoryController.create
     )
     .get(
-        productCategoryRedisMiddleware.getCachedProductCategory(), ProductCategoryController.getAll);
+        productCategoryRedisMiddleware.getCachedProductCategory(), 
+        ProductCategoryController.getAll);
 
 router.get("/categories/stats",
     Auth, ProductCategoryController.stats);

@@ -27,6 +27,12 @@ router
         FarmRedisMiddleware.getTopFarms(),
         FarmController.getTopFarms);
 
+router
+    .route("/farms")
+    .get(
+        FarmRedisMiddleware.getAll(),
+        FarmController.getAll);
+
 
 router.route("/my-farm")
     .get(

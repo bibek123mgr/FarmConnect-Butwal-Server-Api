@@ -20,6 +20,21 @@ class FarmRedisMiddleware {
             });
         });
     }
+
+    static getAll(){
+        return asyncHandler(async (_req: AuthRequest, res: Response, next: NextFunction) => {
+            const key = `farm:all`;
+            const farms = await redisClient.get(key);
+            if (!farms) {
+                return next();
+            }
+            return res.status(200).json({
+                success: true,
+                message: "Farms fetched successfully",
+                data: JSON.parse(farms),
+            });
+        });
+    }
 }
 
 export default FarmRedisMiddleware;

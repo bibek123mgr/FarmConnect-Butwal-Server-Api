@@ -38,10 +38,37 @@ class ProductCategoryService {
     static async getAllCategories() {
         const categories = await Category.findAll({
             where: { isActive: true },
-            attributes: ["id", "name", "description", "image"],
+            attributes: [
+                "id",
+                "name",
+                "description",
+                "image",
+                [
+                    Sequelize.fn("COUNT", Sequelize.col("products.id")),
+                    "productCount",
+                ],
+            ],
+            include: [
+                {
+                    model: Product,
+                    attributes: [],
+                    where: {
+                        isActive: true,
+                    },
+                    required: false,
+                },
+            ],
+            group: ["Category.id"],
             order: [["sortOrder", "ASC"]],
         });
-        await redisClient.set("categories:all", JSON.stringify(categories), "EX", 300);
+
+        await redisClient.set(
+            "categories:all",
+            JSON.stringify(categories),
+            "EX",
+            300
+        );
+
         return categories;
     }
 
@@ -58,7 +85,7 @@ class ProductCategoryService {
     static async getCategoryById(id: number) {
         const category = await Category.findOne({
             where: { id, isActive: true },
-            attributes: ["id", "name","description", "image", "sortOrder"],
+            attributes: ["id", "name", "description", "image", "sortOrder"],
         });
         if (!category) {
             throw new NotFoundError("Category not found");

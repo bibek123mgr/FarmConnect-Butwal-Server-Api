@@ -6,8 +6,10 @@ import {
     Default,
     ForeignKey,
     BelongsTo,
+    HasMany,
 } from "sequelize-typescript";
 import User from "./UserModel";
+import Product from "./ProductModel";
 
 @Table({
     tableName: "farms",
@@ -90,6 +92,9 @@ export class Farm extends Model {
         type: DataType.BOOLEAN,
     })
     declare isVerified: boolean;
+
+    @HasMany(() => Product)
+    products!: Product[];
 }
 
 export default Farm;
