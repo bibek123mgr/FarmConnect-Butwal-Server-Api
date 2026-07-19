@@ -51,8 +51,14 @@ class FarmController {
         });
     });
 
-    static getById = asyncHandler(async (req: Request, res: Response) => {
-        const id = Number(req.params.id);
+    static getById = asyncHandler(async (req: AuthRequest, res: Response) => {
+        const id = req.user!.farmId!;
+        if (!id) {
+            return res.status(404).json({
+                status: false,
+                message: "Farm not found",
+            });
+        }
 
         const farm = await FarmService.getFarmById(id);
 

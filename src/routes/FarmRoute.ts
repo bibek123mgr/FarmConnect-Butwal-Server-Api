@@ -17,15 +17,22 @@ import { upload } from '../middlewares/MulterConfig';
 
 router
     .route("/register")
-    .post(Auth, validate(FarmValidation.createFarmSchema), 
-    upload.single("image"),
-    FarmController.create);
+    .post(Auth, validate(FarmValidation.createFarmSchema),
+        upload.single("image"),
+        FarmController.create);
 
 router
     .route("/top-farms")
     .get(
         FarmRedisMiddleware.getTopFarms(),
         FarmController.getTopFarms);
+
+
+router.route("/my-farm")
+    .get(
+        Auth,
+        FarmController.getById
+    );
 
 
 

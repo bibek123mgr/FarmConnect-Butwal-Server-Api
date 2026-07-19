@@ -1,4 +1,4 @@
-import { QueryTypes } from "sequelize";
+import { QueryTypes, Sequelize } from "sequelize";
 import sequelize from "../../config/database";
 import Farm from "../../models/FarmModel";
 import { NotFoundError } from "../../utils/errors";
@@ -95,15 +95,37 @@ class FarmService {
         return farms;
     }
 
-    static async getFarmById(id: number) {
-        const farm = await Farm.findByPk(id);
+   static async getFarmById(id: number) {
+    const farm = await Farm.findByPk(id, {
+        attributes: [
+            "id",
+            "userId",
+            [Sequelize.col("user.email"), "email"],
+            [Sequelize.col("user.phone"), "phone"],
+            "farmName",
+            "description",
+            "province",
+            "district",
+            "address",
+            "logo",
+            "panNo",
+            "vatNo",
+        ],
+        include: [
+            {
+                model: User,
+                attributes: []
+            }
+        ],
+        raw: true
+    });
 
-        if (!farm) {
-            throw new NotFoundError("Farm not found");
-        }
-
-        return farm;
+    if (!farm) {
+        throw new NotFoundError("Farm not found");
     }
+
+    return farm;
+}
 
     static async getFarmsByUser(userId: number) {
         return await Farm.findAll({
