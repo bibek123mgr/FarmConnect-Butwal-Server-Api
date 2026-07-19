@@ -1,7 +1,8 @@
 // controllers/RecommendationController.ts
 
 import { Request, Response } from "express";
-import collaborativeFilteringService from "../services/collaborativeFilteringService";
+import collaborativeFilteringService, { ForecastPeriod } from "../services/collaborativeFilteringService";
+import { AuthRequest } from "../middlewares/Auth";
 
 export interface UserSimilarity {
     userId: number;
@@ -180,7 +181,7 @@ class RecommendationController {
      * POST /api/recommendations/compare-users
      * Compare similarity between two users
      */
-    async compareUsers(req: Request, res: Response): Promise<void> {
+    static async compareUsers(req: Request, res: Response): Promise<void> {
         try {
             const { userId1, userId2 } = req.body;
 
@@ -217,7 +218,7 @@ class RecommendationController {
     }
 
 
-    async getMarketBasketAnalysis(req: Request, res: Response): Promise<void> {
+     async getMarketBasketAnalysis(req: Request, res: Response): Promise<void> {
         try {
             const productId = Array.isArray(req.params.productId)
                 ? req.params.productId[0]
@@ -249,10 +250,10 @@ class RecommendationController {
         }
     }
 
-    async autocorrectSearch(req: Request, res: Response) {
+     async autocorrectSearch(req: Request, res: Response) {
         try {
             const { keyword } = req.query;
-          
+
             if (!keyword) {
                 res.status(400).json({
                     success: false,
@@ -273,6 +274,31 @@ class RecommendationController {
                 error: error instanceof Error ? error.message : 'Internal server error',
             });
         }
+    }
+
+
+    async demandForecasting(req: AuthRequest, res: Response) {
+        try {
+            const { period } = req.query;
+            const farmId = req.user?.farmId;
+
+            const result =
+                await collaborativeFilteringService.forecastProducts(
+                    Number(farmId)
+                );
+
+            res.json({
+                success: true,
+                data: result,
+            });
+        } catch (error) {
+            console.error('Error in autocorrectSearch:', error);
+            res.status(500).json({
+                success: false,
+                error: error instanceof Error ? error.message : 'Internal server error',
+            });
+        }
+
     }
 
 

@@ -38,6 +38,12 @@ export interface RecommendedProduct {
     recommendationType: string;
 }
 
+export enum ForecastPeriod {
+    DAILY = "daily",
+    WEEKLY = "weekly",
+    MONTHLY = "monthly",
+}
+
 export interface TopSimilarUser {
     userId: number;
     similarity: number;
@@ -102,6 +108,23 @@ export interface AssociationRulesResult {
     productId: number;
     productName: string;
     totalTransactions: number;
+}
+
+export interface ProductForecast {
+
+    productId: number;
+
+    productName: string;
+
+    image: string;
+
+    currentStock: number;
+
+    tomorrow: number;
+
+    nextWeek: number;
+
+    nextMonth: number;
 }
 class CollaborativeFilteringService {
 
@@ -843,6 +866,332 @@ class CollaborativeFilteringService {
 
         return sorted.slice(0, 10);
     }
+
+    async forecastProducts(
+    farmId: number
+): Promise<ProductForecast[]> {
+
+
+    const orderItems = await OrderItem.findAll({
+
+        where: {
+            farmId,
+            isActive: true
+        },
+
+        include: [
+            {
+                model: Product,
+                attributes: [
+                    "id",
+                    "name",
+                    "image"
+                ]
+            }
+        ],
+
+        order:[
+            ["createdAt","ASC"]
+        ]
+
+    });
+
+
+
+    const stocks = await ActualStock.findAll({
+
+        where:{
+            isActive:true
+        }
+
+    });
+
+
+
+    const stockMap = new Map<number,number>();
+
+
+    for(const stock of stocks){
+
+        const currentStock =
+            Number(stock.openingStock)
+            +
+            Number(stock.production)
+            -
+            Number(stock.sales)
+            +
+            Number(stock.salesReturn)
+            -
+            Number(stock.damage)
+            -
+            Number(stock.chalan)
+            +
+            Number(stock.chalanReturn)
+            -
+            Number(stock.reserveQuantity);
+
+
+        stockMap.set(
+            stock.productId,
+            currentStock
+        );
+
+    }
+
+
+
+
+
+    /*
+        Group sales history
+    */
+
+    const productMap =
+        new Map<number,any>();
+
+
+
+    for(const item of orderItems){
+
+
+        const productId =
+            item.productId;
+
+
+
+        if(!productMap.has(productId)){
+
+
+            productMap.set(productId,{
+
+                productId,
+
+                productName:
+                    item.product.name,
+
+
+                image:
+                    item.product.image,
+
+
+                sales:[]
+
+
+            });
+
+
+        }
+
+
+
+        productMap
+        .get(productId)
+        .sales
+        .push({
+
+            date:item.createdAt,
+
+            quantity:
+                Number(item.quantity)
+
+        });
+
+
+    }
+
+
+
+
+    const result:ProductForecast[]=[];
+
+
+
+
+    for(const product of productMap.values()){
+
+
+        const sales =
+            product.sales;
+
+
+
+        /*
+            Take last 10 sales
+            because recent behavior matters more
+        */
+
+        const recentSales =
+            sales.slice(-10);
+
+
+
+        let weightTotal = 0;
+
+        let weightedSum = 0;
+
+
+
+        /*
+            Weighted Moving Average
+
+            Old sales = low weight
+            Recent sales = high weight
+
+        */
+
+
+        recentSales.forEach(
+            (sale,index)=>{
+
+
+                const weight =
+                    index + 1;
+
+
+                weightedSum +=
+                    sale.quantity *
+                    weight;
+
+
+                weightTotal +=
+                    weight;
+
+
+            }
+        );
+
+
+
+        const dailyForecast =
+            weightedSum /
+            weightTotal;
+
+
+
+
+
+        /*
+            Trend Calculation
+
+            Compare first half
+            with second half
+
+        */
+
+
+        const middle =
+            Math.floor(
+                recentSales.length / 2
+            );
+
+
+
+        const firstHalf =
+            recentSales
+            .slice(0,middle)
+            .reduce(
+                (sum,s)=>
+                    sum+s.quantity,
+                0
+            );
+
+
+
+        const secondHalf =
+            recentSales
+            .slice(middle)
+            .reduce(
+                (sum,s)=>
+                    sum+s.quantity,
+                0
+            );
+
+
+
+        let trendFactor = 1;
+
+
+
+        if(secondHalf > firstHalf){
+
+            trendFactor = 1.15;
+
+        }
+        else if(secondHalf < firstHalf){
+
+            trendFactor = 0.85;
+
+        }
+
+
+
+        /*
+            Final prediction
+
+        */
+
+
+        const finalDailyForecast =
+            dailyForecast *
+            trendFactor;
+
+
+
+        result.push({
+
+            productId:
+                product.productId,
+
+
+            productName:
+                product.productName,
+
+
+            image:
+                product.image,
+
+
+            currentStock:
+                stockMap.get(
+                    product.productId
+                ) || 0,
+
+
+            tomorrow:
+                Math.ceil(
+                    finalDailyForecast
+                ),
+
+
+
+            nextWeek:
+                Math.ceil(
+                    finalDailyForecast * 7
+                ),
+
+
+
+            nextMonth:
+                Math.ceil(
+                    finalDailyForecast * 30
+                )
+
+
+        });
+
+
+    }
+
+
+
+    return result
+        .sort(
+            (a,b)=>
+            b.nextMonth -
+            a.nextMonth
+        )
+
+}
 
 }
 

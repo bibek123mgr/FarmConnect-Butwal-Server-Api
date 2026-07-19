@@ -1,7 +1,6 @@
-// routes/recommendationRoutes.ts
-
-import { Router, Request, Response } from 'express';
-import recommendationController from '../controllers/RecommendationController';
+import { Router } from "express";
+import RecommendationController from "../controllers/RecommendationController";
+import { Auth } from "../middlewares/Auth";
 
 const router = Router();
 
@@ -11,32 +10,13 @@ const router = Router();
  * ═══════════════════════════════════════════════════════════════════
  */
 
-/**
- * GET /api/recommendations/:userId
- * Get collaborative filtering recommendations for a specific user
- * 
- * Query Parameters:
- *   - limit (optional): Number of recommendations (default: 5)
- * 
- * Example: /api/recommendations/1?limit=8
- */
-router.get(
-  '/recommendations/:userId',
-  (req: Request, res: Response) =>
-    recommendationController.getRecommendations(req, res)
-);
+router
+    .route("/recommendations/:userId")
+    .get(RecommendationController.getRecommendations);
 
-/**
- * GET /api/recommendations/:userId/details
- * Get detailed recommendation analysis with metrics
- * 
- * Example: /api/recommendations/1/details
- */
-router.get(
-  '/recommendations/:userId/details',
-  (req: Request, res: Response) =>
-    recommendationController.getRecommendationDetails(req, res)
-);
+router
+    .route("/recommendations/:userId/details")
+    .get(RecommendationController.getRecommendationDetails);
 
 /**
  * ═══════════════════════════════════════════════════════════════════
@@ -44,39 +24,18 @@ router.get(
  * ═══════════════════════════════════════════════════════════════════
  */
 
-/**
- * GET /api/products/:productId/market-basket-analysis
- * Market Basket Analysis - Find frequently bought together products
- * 
- * Query Parameters:
- *   - limit (optional): Number of recommendations (default: 5)
- *   - optimized (optional): Use optimized SQL query (default: false)
- * 
- * Example: /api/products/5/market-basket-analysis?limit=8&optimized=true
- */
-router.get(
-  '/products/:productId/market-basket-analysis',
-  (req: Request, res: Response) =>
-    recommendationController.getMarketBasketAnalysis(req, res)
-);
+router
+    .route("/products/:productId/market-basket-analysis")
+    .get(RecommendationController.getMarketBasketAnalysis);
 
+router
+    .route("/products/autocorrect-search")
+    .get(RecommendationController.autocorrectSearch);
 
-/**
- * GET /api/autocorrect-search
- * Market Basket Analysis - Find frequently bought together products
- * 
- * Query Parameters:
- *   - limit (optional): Number of recommendations (default: 5)
- *   - optimized (optional): Use optimized SQL query (default: false)
- * 
- * Example: /api/products/5/market-basket-analysis?limit=8&optimized=true
- */
-router.get(
-  '/products/autocorrect-search',
-  (req: Request, res: Response) =>
-    recommendationController.autocorrectSearch(req, res)
-);
-
-
+router
+    .route("/products/demand-forecasting")
+    .get(
+      Auth,
+      RecommendationController.demandForecasting);
 
 export default router;
