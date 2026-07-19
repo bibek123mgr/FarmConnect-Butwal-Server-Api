@@ -4,6 +4,7 @@ import Product from "../models/ProductModel";
 import Payment from "../models/PaymentModel";
 import OrderItem from "../models/OrderItemModel";
 import Category from "../models/CategoryModel";
+import Order from "../models/OrderModel";
 
 class DashboardService {
 
@@ -156,208 +157,195 @@ class DashboardService {
     // }
 
     static async getDashboardStats(farmId?: number) {
-    const sevenDaysAgo = new Date();
-    sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 6);
+        const isSuperAdmin = !farmId || farmId <= 0;
 
-    const vendorOrderWhere = farmId && farmId > 0 ? { farmId } : {};
-    const productWhere = farmId && farmId > 0 ? { farmId: farmId } : {};
+        const sevenDaysAgo = new Date();
+        sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 6);
 
-    const [
-        totalOrders,
-        totalAmount,
-        totalProducts,
-        totalPayment,
-        topSellingProducts,
-        dailySalesData,
-        categorySales,
-        monthlySalesData,
-    ] = await Promise.all([
-        // Total Orders
-        VendorOrder.count({
-            where: vendorOrderWhere,
-        }),
+        const twelveMonthsAgo = new Date(
+            new Date().setMonth(new Date().getMonth() - 11)
+        );
 
-        // Total Sales Amount
-        VendorOrder.findOne({
-            where: vendorOrderWhere,
-            attributes: [
-                [fn("SUM", col("totalAmount")), "totalAmount"],
-            ],
-            raw: true,
-        }),
+        const vendorOrderWhere = !isSuperAdmin ? { farmId } : {};
+        const productWhere = !isSuperAdmin ? { farmId } : {};
 
-        // Total Products
-        Product.count({
-            where: productWhere,
-        }),
+        const [
+            totalOrders,
+            totalAmount,
+            totalProducts,
+            totalPayment,
+            topSellingProducts,
+            dailySalesData,
+            categorySales,
+            monthlySalesData,
+        ] = await Promise.all([
+            isSuperAdmin
+                ? Order.count()
+                : VendorOrder.count({ where: vendorOrderWhere }),
 
-        // Total Payment
-        Payment.findOne({
-            attributes: [
-                [fn("SUM", col("amount")), "totalAmount"],
-            ],
-            raw: true,
-        }),
+            isSuperAdmin
+                ? Order.findOne({
+                    attributes: [[fn("SUM", col("totalAmount")), "totalAmount"]],
+                    raw: true,
+                })
+                : VendorOrder.findOne({
+                    where: vendorOrderWhere,
+                    attributes: [[fn("SUM", col("totalAmount")), "totalAmount"]],
+                    raw: true,
+                }),
 
-        // Top Selling Products
-        OrderItem.findAll({
-            attributes: [
-                "productId",
-                [col("product.name"), "productName"],
-                [fn("SUM", col("OrderItem.quantity")), "totalSold"],
-                [fn("SUM", col("OrderItem.subtotal")), "totalRevenue"],
-            ],
-            include: [
-                {
-                    model: Product,
-                    attributes: [],
-                    ...(farmId && farmId > 0
-                        ? {
-                              where: {
-                                  farmId: farmId,
-                              },
-                          }
-                        : {}),
-                },
-            ],
-            group: [
-                "productId",
-                "product.id",
-            ],
-            order: [[literal("totalSold"), "DESC"]],
-            limit: 5,
-        }),
+            Product.count({ where: productWhere }),
 
-        // Daily Sales (Last 7 Days)
-        VendorOrder.findAll({
-            attributes: [
-                [fn("DATE", col("createdAt")), "date"],
-                [fn("SUM", col("totalAmount")), "sales"],
-            ],
-            where: {
-                ...vendorOrderWhere,
-                createdAt: {
-                    [Op.gte]: sevenDaysAgo,
-                },
-            },
-            group: [fn("DATE", col("createdAt"))],
-            order: [[fn("DATE", col("createdAt")), "ASC"]],
-            raw: true,
-        }),
+            Payment.findOne({
+                attributes: [[fn("SUM", col("amount")), "totalAmount"]],
+                raw: true,
+            }),
 
-        // Category Sales
-        OrderItem.findAll({
-            attributes: [
-                [col("product.category.id"), "categoryId"],
-                [col("product.category.name"), "categoryName"],
-                [fn("SUM", col("OrderItem.quantity")), "totalSold"],
-            ],
-            include: [
-                {
-                    model: Product,
-                    attributes: [],
-                    ...(farmId && farmId > 0
-                        ? {
-                              where: {
-                                  farmId: farmId,
-                              },
-                          }
-                        : {}),
-                    include: [
-                        {
-                            model: Category,
-                            attributes: [],
-                        },
+            OrderItem.findAll({
+                attributes: [
+                    "productId",
+                    [col("product.name"), "productName"],
+                    [fn("SUM", col("OrderItem.quantity")), "totalSold"],
+                    [fn("SUM", col("OrderItem.subtotal")), "totalRevenue"],
+                ],
+                include: [
+                    {
+                        model: Product,
+                        attributes: [],
+                        ...(!isSuperAdmin ? { where: { farmId } } : {}),
+                    },
+                ],
+                group: ["productId", "product.id"],
+                order: [[literal("totalSold"), "DESC"]],
+                limit: 5,
+            }),
+
+            isSuperAdmin
+                ? Order.findAll({
+                    attributes: [
+                        [fn("DATE", col("createdAt")), "date"],
+                        [fn("SUM", col("totalAmount")), "sales"],
                     ],
-                },
-            ],
-            group: [
-                "product.category.id",
-                "product.category.name",
-            ],
-            order: [[fn("SUM", col("OrderItem.quantity")), "DESC"]],
-            limit: 5,
-            raw: true,
-        }),
+                    where: {
+                        createdAt: { [Op.gte]: sevenDaysAgo },
+                    },
+                    group: [fn("DATE", col("createdAt"))],
+                    order: [[fn("DATE", col("createdAt")), "ASC"]],
+                    raw: true,
+                })
+                : VendorOrder.findAll({
+                    attributes: [
+                        [fn("DATE", col("createdAt")), "date"],
+                        [fn("SUM", col("totalAmount")), "sales"],
+                    ],
+                    where: {
+                        ...vendorOrderWhere,
+                        createdAt: { [Op.gte]: sevenDaysAgo },
+                    },
+                    group: [fn("DATE", col("createdAt"))],
+                    order: [[fn("DATE", col("createdAt")), "ASC"]],
+                    raw: true,
+                }),
 
-        // Monthly Sales (Last 12 Months)
-        VendorOrder.findAll({
-            attributes: [
-                [fn("DATE_FORMAT", col("createdAt"), "%Y-%m"), "month"],
-                [fn("SUM", col("totalAmount")), "sales"],
-            ],
-            where: {
-                ...vendorOrderWhere,
-                createdAt: {
-                    [Op.gte]: new Date(
-                        new Date().setMonth(new Date().getMonth() - 11)
-                    ),
-                },
-            },
-            group: [fn("DATE_FORMAT", col("createdAt"), "%Y-%m")],
-            order: [[fn("DATE_FORMAT", col("createdAt"), "%Y-%m"), "ASC"]],
-            raw: true,
-        }),
-    ]);
+            OrderItem.findAll({
+                attributes: [
+                    [col("product.category.id"), "categoryId"],
+                    [col("product.category.name"), "categoryName"],
+                    [fn("SUM", col("OrderItem.quantity")), "totalSold"],
+                ],
+                include: [
+                    {
+                        model: Product,
+                        attributes: [],
+                        ...(!isSuperAdmin ? { where: { farmId } } : {}),
+                        include: [
+                            {
+                                model: Category,
+                                attributes: [],
+                            },
+                        ],
+                    },
+                ],
+                group: ["product.category.id", "product.category.name"],
+                order: [[fn("SUM", col("OrderItem.quantity")), "DESC"]],
+                limit: 5,
+                raw: true,
+            }),
 
-    // Process daily sales
-    const weekDays = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
-    const dailySalesMap = new Map<string, number>();
+            isSuperAdmin
+                ? Order.findAll({
+                    attributes: [
+                        [fn("DATE_FORMAT", col("createdAt"), "%Y-%m"), "month"],
+                        [fn("SUM", col("totalAmount")), "sales"],
+                    ],
+                    where: {
+                        createdAt: { [Op.gte]: twelveMonthsAgo },
+                    },
+                    group: [fn("DATE_FORMAT", col("createdAt"), "%Y-%m")],
+                    order: [[fn("DATE_FORMAT", col("createdAt"), "%Y-%m"), "ASC"]],
+                    raw: true,
+                })
+                : VendorOrder.findAll({
+                    attributes: [
+                        [fn("DATE_FORMAT", col("createdAt"), "%Y-%m"), "month"],
+                        [fn("SUM", col("totalAmount")), "sales"],
+                    ],
+                    where: {
+                        ...vendorOrderWhere,
+                        createdAt: { [Op.gte]: twelveMonthsAgo },
+                    },
+                    group: [fn("DATE_FORMAT", col("createdAt"), "%Y-%m")],
+                    order: [[fn("DATE_FORMAT", col("createdAt"), "%Y-%m"), "ASC"]],
+                    raw: true,
+                }),
+        ]);
 
-    dailySalesData.forEach((item: any) => {
-        const date = new Date(item.date);
-        const dayName = weekDays[date.getDay()];
-        dailySalesMap.set(dayName, Number(item.sales) || 0);
-    });
+        const weekDays = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
+        const dailySalesMap = new Map<string, number>();
 
-    const dailySales = weekDays.map((day) => ({
-        day,
-        sales: dailySalesMap.get(day) || 0,
-    }));
+        dailySalesData.forEach((item: any) => {
+            const date = new Date(item.date);
+            const dayName = weekDays[date.getDay()];
+            dailySalesMap.set(dayName, Number(item.sales) || 0);
+        });
 
-    // Process monthly sales
-    const months = [
-        "Jan",
-        "Feb",
-        "Mar",
-        "Apr",
-        "May",
-        "Jun",
-        "Jul",
-        "Aug",
-        "Sept",
-        "Oct",
-        "Nov",
-        "Dec",
-    ];
+        const dailySales = weekDays.map((day) => ({
+            day,
+            sales: dailySalesMap.get(day) || 0,
+        }));
 
-    const monthlySalesMap = new Map<string, number>();
+        const months = [
+            "Jan", "Feb", "Mar", "Apr", "May", "Jun",
+            "Jul", "Aug", "Sept", "Oct", "Nov", "Dec",
+        ];
 
-    monthlySalesData.forEach((item: any) => {
-        const [, month] = item.month.split("-");
-        const monthName = months[parseInt(month, 10) - 1];
+        const monthlySalesMap = new Map<string, number>();
 
-        if (monthName) {
-            monthlySalesMap.set(monthName, Number(item.sales) || 0);
-        }
-    });
+        monthlySalesData.forEach((item: any) => {
+            const [, month] = item.month.split("-");
+            const monthName = months[parseInt(month, 10) - 1];
 
-    const monthlySales = months.map((month) => ({
-        month,
-        sales: monthlySalesMap.get(month) || 0,
-    }));
+            if (monthName) {
+                monthlySalesMap.set(monthName, Number(item.sales) || 0);
+            }
+        });
 
-    return {
-        totalOrders,
-        totalAmount: Number((totalAmount as any)?.totalAmount) || 0,
-        totalProducts,
-        totalPayment: Number((totalPayment as any)?.totalAmount) || 0,
-        topSellingProducts,
-        dailySales,
-        categorySales,
-        monthlySales,
-    };
-}
+        const monthlySales = months.map((month) => ({
+            month,
+            sales: monthlySalesMap.get(month) || 0,
+        }));
+
+        return {
+            totalOrders,
+            totalAmount: Number((totalAmount as any)?.totalAmount) || 0,
+            totalProducts,
+            totalPayment: Number((totalPayment as any)?.totalAmount) || 0,
+            topSellingProducts,
+            dailySales,
+            categorySales,
+            monthlySales,
+        };
+    }
 
 }
 

@@ -340,7 +340,6 @@ class OrderService {
                 },
                 { transaction }
             );
-            await transaction.commit();
             await VendorOrder.update({
                 status: OrderStatus.CONFIRMED,
                 paymentStatus: PaymentStatus.PAID
@@ -352,6 +351,7 @@ class OrderService {
                     transaction
                 }
             )
+            await transaction.commit();
             return {
                 farmerIds: Array.from(farmerIds),
                 orderId: order.id,
@@ -644,7 +644,7 @@ class OrderService {
             order: [["createdAt", "DESC"]]
         });
 
-        await redisClient.set(`user:${userId}:orders`, JSON.stringify(orders));
+        await redisClient.set(`user:${userId}:orders`, JSON.stringify(orders), "EX", 300);
 
         return orders;
     }

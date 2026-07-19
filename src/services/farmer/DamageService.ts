@@ -133,8 +133,17 @@ class DamageService {
     }
 
     static async getAllDamages(userId: number) {
+
+        const whereCondition: { isActive: boolean; userId?: number } = {
+            isActive: true,
+        };
+
+        if (userId > 0) {
+            whereCondition.userId = userId;
+        }
+
         return await Damage.findAll({
-            where: { userId, isActive: true },
+            where: whereCondition,
             attributes: [
                 "id",
                 "productId",

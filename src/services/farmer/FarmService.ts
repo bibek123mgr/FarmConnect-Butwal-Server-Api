@@ -69,11 +69,13 @@ class FarmService {
             SELECT 
                 id,
                 a.farmName,
+                a.image,
                 a.description,
                 a.address as address
                 from(
                     SELECT 
                         a.id,
+                        a.logo as image,
                         a.farmName,
                         a.description,
                         CONCAT(a.province, ' ',a.district, ' ',a.address) as address,

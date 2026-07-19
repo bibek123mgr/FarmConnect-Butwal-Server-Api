@@ -123,6 +123,7 @@ class Payment {
 
     public static async verifyKhaltiPayment(pidx: string): Promise<Boolean> {
         try {
+            console.log(pidx)   
             const payload = {
                 "pidx": pidx
             }
@@ -136,6 +137,7 @@ class Payment {
                     },
                 }
             );
+            console.log(response.data)
             return response.data?.status == "Completed";
 
         } catch (error: any) {

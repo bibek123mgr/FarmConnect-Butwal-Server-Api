@@ -32,7 +32,9 @@ class DamageController {
     });
 
     static getAll = asyncHandler(async (req: AuthRequest, res: Response) => {
-        const data = await DamageService.getAllDamages(req.user!.id);
+        const userId = req.user?.role === "farmer" ? req.user.id : 0;
+
+        const data = await DamageService.getAllDamages(userId);
 
         res.status(200).json({
             status: true,
@@ -59,7 +61,7 @@ class DamageController {
     });
 
     static getDamageStats = asyncHandler(async (req: AuthRequest, res: Response) => {
-        const userId= req.user?.role === "farmer" ? req.user.id : 0;
+        const userId = req.user?.role === "farmer" ? req.user.id : 0;
         const data = await DamageService.getDamageStats(userId);
 
         res.status(200).json({

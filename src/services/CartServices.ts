@@ -108,15 +108,16 @@ class CartService {
         }
     }
     static async getMyCart(userId: number) {
-
         const key = `cart:user:${userId}`;
+
         const cart = await Cart.findAll({
-            where: { userId, isActive: true },
+            where: {
+                userId,
+                isActive: true,
+            },
             attributes: [
                 "id",
                 "productId",
-                [Sequelize.col("product.image"), "image"],
-                [Sequelize.col("product.name"), "productName"],
                 "quantity",
                 "price",
                 "total",
@@ -124,21 +125,35 @@ class CartService {
             include: [
                 {
                     model: Product,
-                    attributes: [],
+                    as: "product", // Use your association alias
+                    attributes: ["name", "image"],
                 },
             ],
             order: [["createdAt", "DESC"]],
-            raw: true
         });
-        if (cart.length > 0) {
+
+        const result = cart.map((item: any) => ({
+            id: item.id,
+            productId: item.productId,
+            productName: item.product?.name,
+            image: item.product?.image,
+            quantity: item.quantity,
+            price: item.price,
+            total: item.total,
+        }));
+
+        if (result.length > 0) {
             const hashData: Record<string, string> = {};
-            cart.forEach((item) => {
+
+            result.forEach((item) => {
                 hashData[item.id] = JSON.stringify(item);
             });
+
             await redisClient.hmset(key, hashData);
             await redisClient.expire(key, 300);
         }
-        return cart;
+
+        return result;
     }
 
     static async updateCart(id: number, data: any) {
